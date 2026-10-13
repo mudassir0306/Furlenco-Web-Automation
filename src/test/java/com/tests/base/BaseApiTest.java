@@ -1,10 +1,10 @@
-package com.playwright.tests.base;
+package com.tests.base;
 
-import com.playwright.framework.api.ApiClient;
+import com.framework.api.ApiClient;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 
-public abstract class BaseApiTest {
+public abstract class BaseApiTest extends BaseTest {
     protected ApiClient api;
 
     @BeforeMethod(alwaysRun = true)

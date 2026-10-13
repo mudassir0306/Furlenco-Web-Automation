@@ -1,9 +1,9 @@
-package com.playwright.tests.api;
+package com.tests.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.playwright.APIResponse;
-import com.playwright.framework.api.ApiClient;
-import com.playwright.tests.base.BaseApiTest;
+import com.framework.api.ApiClient;
+import com.tests.base.BaseApiTest;
 import org.testng.annotations.Test;
 
 import java.util.Map;

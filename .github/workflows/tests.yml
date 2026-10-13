@@ -47,4 +47,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failure-artifacts
-          path: artifacts/
+          path: target/traces/

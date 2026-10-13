@@ -30,23 +30,14 @@ On first run on a new machine, Playwright downloads the required browsers automa
 | Change parallel forks | `mvn test -Dforks=1` |
 | Override environment | `mvn test -Denv=staging` |
 
-Environment values are resolved by `Config.get(...)` in this order:
+Configuration is loaded by `com.framework.config.ConfigManager` from `src/test/resources/config/<env>.properties` (`-Denv=qa|staging|preprod|prod`, default `qa`). Keys resolve in this order:
 
 1. `-Dkey=value`
-2. `env`-scoped key from `src/test/resources/config.properties` (for example `qa.web.baseUrl`)
-3. plain key from `src/test/resources/config.properties`
+2. OS env var (upper snake case, e.g. `WEB_BASE_URL`)
+3. env-scoped key in the env file (e.g. `qa.web.base.url`)
+4. plain key in the env file (e.g. `web.base.url`)
 
-Example:
-
-```properties
-env=qa
-qa.web.baseUrl=https://www.saucedemo.com
-qa.api.baseUrl=https://jsonplaceholder.typicode.com
-qa.web.username=standard_user
-qa.web.password=secret_sauce
-```
-
-To test another environment, set `-Denv=staging` and add matching `staging.*` keys to `src/test/resources/config.properties`.
+The sample public-site tests (`com.tests.web.LoginTest`, `com.tests.api.PostsApiTest`) read `sample.web.*` / `sample.api.base.url` from `config/qa.properties`, with built-in defaults if absent. The root `src/test/resources/config.properties` is no longer read by the framework.
 
 ## Reports
 
@@ -56,25 +47,25 @@ Allure results are written to `target/allure-results`.
 allure serve target/allure-results
 ```
 
-When a web test fails, the framework also saves failure artifacts in `artifacts/`:
+When a web test fails, the framework also saves failure artifacts:
 
-- screenshots: `artifacts/screenshots/<test>.png`
-- traces: `artifacts/traces/<test>.zip`
+- screenshots: attached to the Allure report
+- traces: `target/traces/<test>-trace.zip`
 
 Open a trace locally with:
 
 ```bash
-npx playwright show-trace artifacts/traces/<test>.zip
+npx playwright show-trace target/traces/<test>-trace.zip
 ```
 
 ## Project layout
 
-- `src/main/java/com/playwright/framework/config` - configuration loading (`Config`)
-- `src/main/java/com/playwright/framework/core` - browser lifecycle and tracing (`PlaywrightManager`)
-- `src/main/java/com/playwright/framework/pages` - page object models
-- `src/main/java/com/playwright/framework/api` - API helper (`ApiClient`)
-- `src/test/java/com/playwright/tests` - TestNG tests and listeners
-- `src/test/resources/config.properties` - default configuration values
+Single framework, `com.framework`:
+
+- `src/main/java/com/framework` - `base/BasePage`, `config/ConfigManager`, `driver/PlaywrightManager`, `api/ApiClient`, `listeners/` (`TestListener`, retry), `utils/`
+- `src/test/java/com/tests` - `base/` (BaseTest, BaseWebTest, BaseApiTest), `pages/` (page objects), `web/`, `api/` tests
+- `src/test/resources/config/<env>.properties` - environment configuration
+- `src/test/resources/META-INF/services/org.testng.ITestNGListener` - registers `TestListener` and `RetryTransformer`
 - `.github/workflows/tests.yml` - CI workflow for push, PR, and manual runs
 
 ## Parallelism

@@ -1,4 +1,4 @@
-package com.playwright.framework.api;
+package com.framework.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,7 +7,7 @@ import com.microsoft.playwright.APIRequestContext;
 import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.options.RequestOptions;
-import com.playwright.framework.config.Config;
+import com.framework.config.ConfigManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,7 +20,7 @@ public class ApiClient implements AutoCloseable {
     private final APIRequestContext request;
 
     public ApiClient() {
-        this(Config.apiBaseUrl(), Map.of());
+        this(ConfigManager.getInstance().get("sample.api.base.url", "https://jsonplaceholder.typicode.com"), Map.of());
     }
 
     public ApiClient(String baseUrl, Map<String, String> headers) {
@@ -30,7 +30,7 @@ public class ApiClient implements AutoCloseable {
         all.putAll(headers);
         this.request = playwright.request().newContext(new APIRequest.NewContextOptions()
                 .setBaseURL(baseUrl)
-                .setTimeout(Config.timeoutMs())
+                .setTimeout(ConfigManager.getInstance().defaultTimeoutMs())
                 .setExtraHTTPHeaders(all));
     }
 

@@ -1,5 +1,6 @@
-package com.playwright.framework.pages;
+package com.tests.pages.sample;
 
+import com.framework.base.BasePage;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;

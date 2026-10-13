@@ -1,5 +1,7 @@
-package com.playwright.framework.pages;
+package com.tests.pages.sample;
 
+import com.framework.base.BasePage;
+import com.framework.config.ConfigManager;
 import com.microsoft.playwright.Page;
 
 public class LoginPage extends BasePage {
@@ -8,7 +10,7 @@ public class LoginPage extends BasePage {
     }
 
     public LoginPage open() {
-        page.navigate("/");
+        navigateTo(ConfigManager.getInstance().get("sample.web.base.url", "https://www.saucedemo.com"));
         return this;
     }
 

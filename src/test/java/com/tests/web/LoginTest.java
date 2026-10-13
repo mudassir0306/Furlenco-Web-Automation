@@ -1,9 +1,8 @@
-package com.playwright.tests.web;
+package com.tests.web;
 
-import com.playwright.framework.config.Config;
-import com.playwright.framework.pages.InventoryPage;
-import com.playwright.framework.pages.LoginPage;
-import com.playwright.tests.base.BaseWebTest;
+import com.tests.pages.sample.InventoryPage;
+import com.tests.pages.sample.LoginPage;
+import com.tests.base.BaseWebTest;
 import org.testng.annotations.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,7 +12,7 @@ public class LoginTest extends BaseWebTest {
     @Test(groups = {"smoke", "web", "public"})
     public void validUserCanLogin() {
         InventoryPage inventory = new LoginPage(page).open()
-                .loginAs(Config.get("web.username"), Config.get("web.password"));
+                .loginAs(config.get("sample.web.username", "standard_user"), config.get("sample.web.password", "secret_sauce"));
 
         assertThat(inventory.isLoaded()).isTrue();
         assertThat(inventory.productCount()).isGreaterThan(0);
@@ -22,7 +21,7 @@ public class LoginTest extends BaseWebTest {
     @Test(groups = {"regression", "web", "public"})
     public void lockedOutUserSeesError() {
         String error = new LoginPage(page).open()
-                .attemptLogin("locked_out_user", Config.get("web.password"))
+                .attemptLogin("locked_out_user", config.get("sample.web.password", "secret_sauce"))
                 .errorMessage();
 
         assertThat(error).contains("locked out");
@@ -31,7 +30,7 @@ public class LoginTest extends BaseWebTest {
     @Test(groups = {"regression", "web", "public"})
     public void userCanAddItemToCart() {
         InventoryPage inventory = new LoginPage(page).open()
-                .loginAs(Config.get("web.username"), Config.get("web.password"))
+                .loginAs(config.get("sample.web.username", "standard_user"), config.get("sample.web.password", "secret_sauce"))
                 .addToCart("Sauce Labs Backpack");
 
         assertThat(inventory.cartBadgeCount()).isEqualTo("1");
