@@ -96,7 +96,7 @@ public class FurlencoCheckoutAddressPage extends BasePage {
         confirmBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         confirmBtn.click();
         page.waitForLoadState();
-        page.waitForTimeout(1500);
+        waitForUrlQuietly("**/checkout/summary**", 5000);
         return new FurlencoOrderSummaryPage(page);
     }
 }

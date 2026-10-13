@@ -83,9 +83,12 @@ public class FurlencoPaymentPage extends BasePage {
         page.locator(NAME_ON_CARD_INPUT).fill(nameOnCard);
         page.locator(VALIDITY_INPUT).fill(validity);
         page.locator(CVV_INPUT).fill(cvv);
+        String urlBefore = page.url();
         page.locator(PAY_NOW_BUTTON).first().click();
         page.waitForLoadState();
-        page.waitForTimeout(4000);
+        // TODO(verify on staging): result redirect/route not confirmed; waits for any URL change, bounded 4s
+        waitForUrlChangeQuietly(urlBefore, 4000);
+        settle(2000);
         return new FurlencoOrderResultPage(page);
     }
 }

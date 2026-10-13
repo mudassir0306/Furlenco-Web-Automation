@@ -4,9 +4,12 @@ import com.framework.base.BasePage;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.framework.utils.WaitUtils;
 import io.qameta.allure.Step;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.time.Duration;
 
 /**
  * Page Object for Furlenco Home Page (www.furlenco.com).
@@ -64,7 +67,7 @@ public class FurlencoHomePage extends BasePage {
                 } else {
                     page.keyboard().press("Escape");
                 }
-                page.waitForTimeout(600);
+                waitQuietly(drawer.first(), WaitForSelectorState.HIDDEN, 2000);
             }
         } catch (Exception e) {
             LOGGER.debug("No modal dismiss needed: {}", e.getMessage());
@@ -90,7 +93,7 @@ public class FurlencoHomePage extends BasePage {
             Locator trigger = page.locator(CITY_TRIGGER).first();
             trigger.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
             trigger.click(new Locator.ClickOptions().setForce(true));
-            page.waitForTimeout(600);
+            waitQuietly(drawer.first(), WaitForSelectorState.VISIBLE, 2000);
         }
         return this;
     }
@@ -107,7 +110,8 @@ public class FurlencoHomePage extends BasePage {
                 : drawer.locator(String.format("p:has-text('%s'), div:has-text('%s')", cityName, cityName)).last();
         cityOption.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         cityOption.click(new Locator.ClickOptions().setForce(true));
-        page.waitForTimeout(1000);
+        waitQuietly(drawer, WaitForSelectorState.HIDDEN, 3000);
+        settle(1000);
         return this;
     }
 
@@ -128,7 +132,14 @@ public class FurlencoHomePage extends BasePage {
         pincodeInput.fill("");
         pincodeInput.pressSequentially(pincode);
         pincodeInput.press("Enter");
-        page.waitForTimeout(1500);
+        try {
+            WaitUtils.pollUntil("pincode applied (drawer closed or invalid-pincode message)",
+                    () -> !page.locator(LOCATION_DRAWER).first().isVisible()
+                            || page.locator(":text(\"Invalid Pincode\")").first().isVisible(),
+                    Duration.ofMillis(1500), Duration.ofMillis(100));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Pincode outcome not observed within bound: {}", e.getMessage());
+        }
         return this;
     }
 
@@ -152,7 +163,7 @@ public class FurlencoHomePage extends BasePage {
         searchBox.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         searchBox.click();
         searchBox.fill(query);
-        page.waitForTimeout(500);
+        waitQuietly(page.locator(SEARCH_ICON).first(), WaitForSelectorState.VISIBLE, 500);
         // Click search icon svg to submit search
         Locator searchBtn = page.locator(SEARCH_ICON).first();
         if (searchBtn.isVisible()) {
@@ -218,7 +229,7 @@ public class FurlencoHomePage extends BasePage {
         LOGGER.info("Clicking Cart button");
         dismissLocationModalIfOpen();
         page.locator(CART_BUTTON).first().click(new Locator.ClickOptions().setForce(true));
-        page.waitForTimeout(1000);
+        waitQuietly(page.locator(":text(\"Cost Breakup\"), button:has-text('CHECKOUT'), #empty-cart, :text(\"Rent Cart\")").first(), WaitForSelectorState.VISIBLE, 3000);
         return new FurlencoCartDrawer(page);
     }
 
@@ -227,7 +238,7 @@ public class FurlencoHomePage extends BasePage {
         LOGGER.info("Clicking Wishlist button");
         dismissLocationModalIfOpen();
         page.locator(WISHLIST_BUTTON).first().click(new Locator.ClickOptions().setForce(true));
-        page.waitForTimeout(500);
+        settle(500); // TODO(verify on staging): wishlist click outcome (page vs login dialog) not observable here
     }
 
     @Step("Check if Help Center link is displayed in footer")

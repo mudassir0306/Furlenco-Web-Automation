@@ -1,7 +1,11 @@
 package com.framework.base;
 
+import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
+import com.microsoft.playwright.options.ElementState;
+import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import io.qameta.allure.Step;
 import org.apache.logging.log4j.LogManager;
@@ -62,6 +66,62 @@ public abstract class BasePage {
 
     protected void waitForHidden(String selector) {
         page.locator(selector).waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.HIDDEN));
+    }
+
+    // ---- Bounded, never-throwing waits (replace fixed sleeps; a timeout just means "carry on") ----
+
+    /** Waits up to {@code timeoutMs} for the locator to reach {@code state}; returns false (no throw) on timeout. */
+    protected boolean waitQuietly(Locator locator, WaitForSelectorState state, double timeoutMs) {
+        try {
+            locator.waitFor(new Locator.WaitForOptions().setState(state).setTimeout(timeoutMs));
+            return true;
+        } catch (TimeoutError e) {
+            LOGGER.debug("Bounded wait for {} timed out after {}ms (continuing)", state, timeoutMs);
+            return false;
+        }
+    }
+
+    /** Waits up to {@code timeoutMs} for the URL to match the glob; returns false (no throw) on timeout. */
+    protected boolean waitForUrlQuietly(String urlGlob, double timeoutMs) {
+        try {
+            page.waitForURL(urlGlob, new Page.WaitForURLOptions().setTimeout(timeoutMs));
+            return true;
+        } catch (TimeoutError e) {
+            LOGGER.debug("Bounded wait for URL {} timed out after {}ms (continuing)", urlGlob, timeoutMs);
+            return false;
+        }
+    }
+
+    /** Waits up to {@code timeoutMs} for the URL to differ from {@code previousUrl}; false (no throw) on timeout. */
+    protected boolean waitForUrlChangeQuietly(String previousUrl, double timeoutMs) {
+        try {
+            page.waitForURL(u -> !u.equals(previousUrl), new Page.WaitForURLOptions().setTimeout(timeoutMs));
+            return true;
+        } catch (TimeoutError e) {
+            LOGGER.debug("URL still {} after {}ms (continuing)", previousUrl, timeoutMs);
+            return false;
+        }
+    }
+
+    /** Lets in-flight network activity settle for at most {@code timeoutMs}; never throws on timeout. */
+    protected void settle(double timeoutMs) {
+        try {
+            page.waitForLoadState(LoadState.NETWORKIDLE, new Page.WaitForLoadStateOptions().setTimeout(timeoutMs));
+        } catch (TimeoutError e) {
+            LOGGER.debug("Network not idle after {}ms (continuing)", timeoutMs);
+        }
+    }
+
+    /** Waits up to {@code timeoutMs} for the locator to be visible and enabled; false on timeout. */
+    protected boolean waitUntilVisibleAndEnabled(Locator locator, double timeoutMs) {
+        try {
+            locator.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(timeoutMs));
+            ElementHandle handle = locator.elementHandle(new Locator.ElementHandleOptions().setTimeout(timeoutMs));
+            handle.waitForElementState(ElementState.ENABLED, new ElementHandle.WaitForElementStateOptions().setTimeout(timeoutMs));
+            return true;
+        } catch (TimeoutError e) {
+            return false;
+        }
     }
 
     @Step("Navigate back in browser history")

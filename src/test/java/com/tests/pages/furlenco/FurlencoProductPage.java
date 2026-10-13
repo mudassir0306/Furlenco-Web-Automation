@@ -57,13 +57,7 @@ public class FurlencoProductPage extends BasePage {
         // (price/availability) can take noticeably longer than a few seconds before the button
         // flips from its initial disabled state to enabled — a short poll window previously
         // false-negatived here. 20s total, polled every second.
-        for (int i = 0; i < 20; i++) {
-            if (btn.isVisible() && btn.isEnabled()) {
-                return true;
-            }
-            page.waitForTimeout(1000);
-        }
-        return false;
+        return waitUntilVisibleAndEnabled(btn, 20_000);
     }
 
     @Step("Click Add to Cart / Rent CTA button")

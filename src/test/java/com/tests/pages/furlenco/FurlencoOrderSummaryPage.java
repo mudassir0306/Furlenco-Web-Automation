@@ -68,9 +68,11 @@ public class FurlencoOrderSummaryPage extends BasePage {
         LOGGER.info("Clicking Proceed on Order Summary");
         Locator proceedBtn = page.locator(PROCEED_BUTTON).first();
         proceedBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        String urlBefore = page.url();
         proceedBtn.click();
         page.waitForLoadState();
-        page.waitForTimeout(2000);
+        // TODO(verify on staging): payment route not confirmed; waits for any URL change, bounded 3s
+        waitForUrlChangeQuietly(urlBefore, 3000);
         return new FurlencoPaymentPage(page);
     }
 }

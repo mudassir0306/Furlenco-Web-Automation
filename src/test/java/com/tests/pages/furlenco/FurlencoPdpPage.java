@@ -38,7 +38,9 @@ public class FurlencoPdpPage extends BasePage {
             if (Boolean.TRUE.equals(any)) {
                 return true;
             }
-            page.waitForTimeout(500);
+            if (waitQuietly(locator.locator("visible=true").first(), WaitForSelectorState.VISIBLE, 500)) {
+                return true;
+            }
         }
         return false;
     }
@@ -90,13 +92,7 @@ public class FurlencoPdpPage extends BasePage {
 
     @Step("Check Add to cart is enabled")
     public boolean isAddToCartEnabled() {
-        for (int i = 0; i < 20; i++) {
-            if (addToCartButton().isEnabled()) {
-                return true;
-            }
-            page.waitForTimeout(1000);
-        }
-        return false;
+        return waitUntilVisibleAndEnabled(addToCartButton(), 20_000);
     }
 
     @Step("Check the Delivery & Assembly Details section with the pincode row")

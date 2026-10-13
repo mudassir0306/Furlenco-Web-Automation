@@ -67,7 +67,7 @@ public class FurlencoCartDrawer extends BasePage {
                 LOGGER.info("Pressing Escape or navigating back if on cart page");
                 page.keyboard().press("Escape");
             }
-            page.waitForTimeout(500);
+            waitQuietly(page.locator(CLOSE_BUTTON).first(), WaitForSelectorState.HIDDEN, 1500);
         } catch (Exception e) {
             LOGGER.debug("Close cart exception handled: {}", e.getMessage());
         }
@@ -84,7 +84,7 @@ public class FurlencoCartDrawer extends BasePage {
         if (isMinTenurePopupDisplayed()) {
             LOGGER.info("Min tenure popup displayed, confirming");
             page.locator(MIN_TENURE_CONFIRM_BUTTON).first().click();
-            page.waitForTimeout(800);
+            waitQuietly(page.locator(MIN_TENURE_DIALOG).first(), WaitForSelectorState.HIDDEN, 2000);
         }
         return this;
     }
@@ -101,7 +101,7 @@ public class FurlencoCartDrawer extends BasePage {
         Locator checkoutBtn = page.locator(CHECKOUT_BUTTON).first();
         checkoutBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         checkoutBtn.click();
-        page.waitForTimeout(800);
+        waitQuietly(page.locator(MIN_TENURE_DIALOG).first(), WaitForSelectorState.VISIBLE, 800);
         confirmMinTenurePopupIfPresent();
         page.waitForLoadState();
         return new FurlencoCheckoutAddressPage(page);
@@ -163,7 +163,9 @@ public class FurlencoCartDrawer extends BasePage {
             if (located.count() > 0 && located.first().isVisible()) {
                 return true;
             }
-            page.waitForTimeout(1000);
+            if (waitQuietly(located.first(), WaitForSelectorState.VISIBLE, 1000)) {
+                return true;
+            }
         }
         return false;
     }
@@ -216,7 +218,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer increaseQuantity(int index) {
         LOGGER.info("Increasing quantity for cart item at index {}", index);
         itemCard(index).locator(ITEM_QUANTITY_BUTTON).nth(1).click();
-        page.waitForTimeout(800);
+        settle(800); // TODO(verify on staging): wait for quantity text change instead
         return this;
     }
 
@@ -224,7 +226,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer decreaseQuantity(int index) {
         LOGGER.info("Decreasing quantity for cart item at index {}", index);
         itemCard(index).locator(ITEM_QUANTITY_BUTTON).nth(0).click();
-        page.waitForTimeout(800);
+        settle(800); // TODO(verify on staging): wait for quantity text change instead
         return this;
     }
 
@@ -232,7 +234,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer removeItem(int index) {
         LOGGER.info("Removing cart item at index {}", index);
         page.locator(ITEM_DELETE_BUTTON).nth(index).click();
-        page.waitForTimeout(800);
+        settle(800); // TODO(verify on staging): wait for item count / totals refresh instead
         return this;
     }
 
@@ -278,7 +280,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer closePaymentPlanSelectorWithoutSelecting() {
         LOGGER.info("Closing payment plan selector via Escape (no selection)");
         page.keyboard().press("Escape");
-        page.waitForTimeout(500);
+        waitQuietly(page.locator(PAYMENT_PLAN_MODAL_HEADING).first(), WaitForSelectorState.HIDDEN, 1500);
         return this;
     }
 
@@ -296,7 +298,8 @@ public class FurlencoCartDrawer extends BasePage {
             return this;
         }
         tile.locator(":text(\"SELECT\")").first().click();
-        page.waitForTimeout(2000);
+        waitQuietly(page.locator(PAYMENT_PLAN_MODAL_HEADING).first(), WaitForSelectorState.HIDDEN, 3000);
+        settle(2000);
         return this;
     }
 
@@ -349,7 +352,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer closeVasEditPanel() {
         LOGGER.info("Closing VAS edit panel via Escape");
         page.keyboard().press("Escape");
-        page.waitForTimeout(500);
+        waitQuietly(page.locator(":text(\"Customize VAS\")").first(), WaitForSelectorState.HIDDEN, 1500);
         return this;
     }
 
@@ -361,7 +364,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer toggleFirstVasOption() {
         LOGGER.info("Toggling first VAS checkbox");
         page.locator(VAS_PANEL_CHECKBOX).first().click();
-        page.waitForTimeout(1000);
+        settle(1000); // TODO(verify on staging): no known element change after toggling a VAS checkbox
         return this;
     }
 
@@ -384,7 +387,7 @@ public class FurlencoCartDrawer extends BasePage {
         Locator input = page.locator(COUPON_INPUT).first();
         input.fill(code);
         page.locator(COUPON_APPLY_BUTTON).first().click();
-        page.waitForTimeout(1500);
+        waitQuietly(page.locator(COUPON_APPLIED_INDICATOR + ", " + COUPON_ERROR_MESSAGE).first(), WaitForSelectorState.VISIBLE, 3000);
         return this;
     }
 
@@ -404,7 +407,7 @@ public class FurlencoCartDrawer extends BasePage {
     public FurlencoCartDrawer removeCoupon() {
         LOGGER.info("Removing applied coupon");
         page.locator(COUPON_REMOVE_BUTTON).first().click();
-        page.waitForTimeout(1000);
+        waitQuietly(page.locator(COUPON_REMOVE_BUTTON).first(), WaitForSelectorState.HIDDEN, 1500);
         return this;
     }
 

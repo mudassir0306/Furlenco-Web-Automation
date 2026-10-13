@@ -4,9 +4,12 @@ import com.framework.base.BasePage;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.framework.utils.WaitUtils;
 import io.qameta.allure.Step;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.time.Duration;
 
 /**
  * Page Object for the Furlenco Login dialog: phone number + 4-digit OTP (not a password) —
@@ -129,7 +132,13 @@ public class FurlencoLoginPage extends BasePage {
 
     @Step("Check if login succeeded")
     public boolean isLoggedIn() {
-        page.waitForTimeout(500);
+        try {
+            WaitUtils.pollUntil("login dialog closed or new-user prompt shown",
+                    () -> !isOpen() || isNewUserSignupPromptDisplayed(),
+                    Duration.ofMillis(1500), Duration.ofMillis(100));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Login outcome not observed within bound: {}", e.getMessage());
+        }
         return !isOpen() && !isNewUserSignupPromptDisplayed();
     }
 

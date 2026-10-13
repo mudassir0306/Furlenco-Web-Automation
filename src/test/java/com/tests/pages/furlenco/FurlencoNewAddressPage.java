@@ -64,7 +64,8 @@ public class FurlencoNewAddressPage extends BasePage {
         input.click();
         input.fill("");
         input.pressSequentially(query);
-        page.waitForTimeout(waitMs);
+        // TODO(verify on staging): suggestions may never appear (blank Google Maps area); bounded by waitMs, no throw
+        waitQuietly(page.locator(SUGGESTION).first(), WaitForSelectorState.VISIBLE, waitMs);
         return page.locator(SUGGESTION).count();
     }
 

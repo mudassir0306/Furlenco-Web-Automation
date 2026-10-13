@@ -53,7 +53,7 @@ public class FurlencoPlpPage extends BasePage {
         category.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         category.click(new Locator.ClickOptions().setForce(true));
         page.waitForLoadState();
-        page.waitForTimeout(500);
+        settle(1500);
         return this;
     }
 
@@ -70,7 +70,7 @@ public class FurlencoPlpPage extends BasePage {
         subcategory.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         subcategory.click(new Locator.ClickOptions().setForce(true));
         page.waitForLoadState();
-        page.waitForTimeout(500);
+        settle(1500);
         return this;
     }
 

@@ -25,7 +25,7 @@ public class FurlencoSearchResultsPage extends BasePage {
     public FurlencoSearchResultsPage waitForResults() {
         LOGGER.info("Waiting for product results container to load");
         page.waitForLoadState();
-        page.waitForTimeout(2000);
+        waitQuietly(page.locator(PRODUCT_CARDS).first(), WaitForSelectorState.VISIBLE, 3000);
         return this;
     }
 
