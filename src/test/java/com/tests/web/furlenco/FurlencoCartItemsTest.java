@@ -7,6 +7,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import java.util.ArrayList;
 import java.util.List;
 import org.testng.SkipException;
@@ -21,6 +22,7 @@ import org.testng.annotations.Test;
 @Feature("Cart Items")
 public class FurlencoCartItemsTest extends FurlencoCityStockSupport {
 
+    @TmsLink("TC-467")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify several products added from their PDPs all appear in the cart with the right count")

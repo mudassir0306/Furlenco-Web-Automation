@@ -12,6 +12,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -57,6 +58,7 @@ public class FurlencoNewUserSignupTest extends BaseWebTest {
         return loginPage.getNewUserSignupPage();
     }
 
+    @TmsLink("TC-460")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify a phone number with no existing account is redirected to the new-user signup screen after OTP")

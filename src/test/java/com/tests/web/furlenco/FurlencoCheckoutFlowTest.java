@@ -16,6 +16,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -47,6 +48,8 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
         }
     }
 
+    @TmsLink("TC-425")
+    @TmsLink("TC-502")
     @Test(groups = {"smoke", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify user is able to add a product to cart via Add to Cart on the Rent PDP screen")
@@ -190,6 +193,7 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
                 .isTrue();
     }
 
+    @TmsLink("TC-459")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 10)
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify Order Summary loads after confirming the delivery address")

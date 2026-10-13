@@ -17,6 +17,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -57,6 +58,7 @@ public class FurlencoSuccessfulOrderTest extends BaseWebTest {
         }
     }
 
+    @TmsLink("TC-487")
     @Test(groups = {"regression", "web", "furlenco", "payment-critical"}, priority = 1)
     @Severity(SeverityLevel.BLOCKER)
     @Description("Verify a Rent order can be placed successfully end-to-end via Razorpay test-mode card payment")

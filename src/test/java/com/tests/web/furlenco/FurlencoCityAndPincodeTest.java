@@ -9,6 +9,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -71,6 +72,7 @@ public class FurlencoCityAndPincodeTest extends BaseWebTest {
         assertThat(homePage.getHeaderLocationText()).as("Header location after a valid pincode").contains("110001");
     }
 
+    @TmsLink("TC-480")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 5)
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify an invalid pincode shows an error and keeps the previous pincode")

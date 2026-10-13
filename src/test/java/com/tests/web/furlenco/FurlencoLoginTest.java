@@ -13,6 +13,8 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -62,6 +64,7 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
         assertThat(loginPage.isLoggedIn()).as("User should be logged in after submitting a valid OTP").isTrue();
     }
 
+    @TmsLink("TC-461")
     @Test(groups = {"regression", "web", "furlenco", "payment-critical"}, priority = 2)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify login is prompted from the Checkout (Pay) screen for Rent when unauthenticated")
@@ -175,5 +178,15 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
         assertThat(loginPage.isLoggedIn())
                 .as("User should be logged in after completing login from Search add-to-cart checkout")
                 .isTrue();
+    }
+
+    @Test(groups = {"furlenco", "city-selector", "backlog"}, enabled = false)
+    @TmsLink("TC-401")
+    @Description("TC-401 Login to Profile from Bengaluru City Selection")
+    public void testLoginToProfileFromBengaluruCitySelection_TC401() {
+        // TODO(TC-401): open the home page, pick Bengaluru in the city selector, then log in from the Profile / Account menu
+        // with the config test user (phone + fixed test OTP) and assert the user is logged in and the city is still Bengaluru.
+        // Related: verifyLoginFromProfileScreen covers login from Profile without the city step.
+        throw new SkipException("TODO: TC-401 not implemented");
     }
 }

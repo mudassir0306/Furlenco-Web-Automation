@@ -14,6 +14,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -85,6 +86,7 @@ public class FurlencoCartVasTest extends BaseWebTest {
         assertThat(cartDrawer.isVasEditPanelOpen()).as("VAS edit panel should close").isFalse();
     }
 
+    @TmsLink("TC-477")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 3)
     @Severity(SeverityLevel.NORMAL)
     @Description("CART-05: Verify toggling a VAS option changes the applied-item count")

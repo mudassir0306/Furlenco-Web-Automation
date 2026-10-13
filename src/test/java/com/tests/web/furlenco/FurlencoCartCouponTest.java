@@ -14,6 +14,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -62,6 +63,7 @@ public class FurlencoCartCouponTest extends BaseWebTest {
         return homePage.openCart();
     }
 
+    @TmsLink("TC-476")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("CART-06: Verify applying a currently-offered coupon succeeds")
@@ -75,6 +77,7 @@ public class FurlencoCartCouponTest extends BaseWebTest {
                 .isTrue();
     }
 
+    @TmsLink("TC-470")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 2)
     @Severity(SeverityLevel.NORMAL)
     @Description("CART-06: Verify applying an invalid coupon code shows an error")

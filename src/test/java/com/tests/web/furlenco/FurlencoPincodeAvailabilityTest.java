@@ -7,6 +7,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import java.util.Set;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
@@ -23,6 +24,7 @@ public class FurlencoPincodeAvailabilityTest extends FurlencoCityStockSupport {
 
     private static final String SERVICEABLE_PINCODE = "400001";
 
+    @TmsLink("TC-464")
     @Test(groups = {"smoke", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify a non-serviceable pincode shows an error and keeps the previous pincode")

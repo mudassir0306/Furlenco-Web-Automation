@@ -14,6 +14,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -58,6 +59,7 @@ public class FurlencoCartQuantityAndPersistenceTest extends BaseWebTest {
         return homePage.openCart();
     }
 
+    @TmsLink("TC-431")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("CART-02: Verify increasing an item's quantity updates the displayed quantity")
@@ -72,6 +74,7 @@ public class FurlencoCartQuantityAndPersistenceTest extends BaseWebTest {
                 .isEqualTo(before + 1);
     }
 
+    @TmsLink("TC-432")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 2)
     @Severity(SeverityLevel.CRITICAL)
     @Description("CART-02: Verify decreasing an item's quantity updates the displayed quantity")
@@ -88,6 +91,8 @@ public class FurlencoCartQuantityAndPersistenceTest extends BaseWebTest {
                 .isEqualTo(before - 1);
     }
 
+    @TmsLink("TC-427")
+    @TmsLink("TC-430")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 3)
     @Severity(SeverityLevel.CRITICAL)
     @Description("CART-02: Verify removing an item takes it out of the cart and recalculates the item count")

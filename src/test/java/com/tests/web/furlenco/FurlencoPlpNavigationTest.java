@@ -10,6 +10,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -30,6 +31,7 @@ public class FurlencoPlpNavigationTest extends BaseWebTest {
         homePage = new FurlencoHomePage(page);
     }
 
+    @TmsLink("TC-421")
     @Test(groups = {"smoke", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify user navigates to Rent PLP screen when tapping RENT in Global Home")
@@ -111,6 +113,7 @@ public class FurlencoPlpNavigationTest extends BaseWebTest {
                 .isEqualTo(homeUrl);
     }
 
+    @TmsLink("TC-424")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 7)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify user navigates to Rent PLP when tapping a product category in Rent home")
@@ -171,6 +174,7 @@ public class FurlencoPlpNavigationTest extends BaseWebTest {
                 .isEqualTo(buyHomeUrl);
     }
 
+    @TmsLink("TC-426")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 11)
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify user is able to select different categories on the Rent PLP screen")

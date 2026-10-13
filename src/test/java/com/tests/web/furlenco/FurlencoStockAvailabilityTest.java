@@ -7,6 +7,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import java.util.Set;
 import org.testng.annotations.Test;
 
@@ -21,6 +22,7 @@ import org.testng.annotations.Test;
 @Feature("City Stock")
 public class FurlencoStockAvailabilityTest extends FurlencoCityStockSupport {
 
+    @TmsLink("TC-468")
     @Test(groups = {"smoke", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify the out-of-stock products in a category differ between cities")
@@ -35,6 +37,7 @@ public class FurlencoStockAvailabilityTest extends FurlencoCityStockSupport {
         assertThat(outOfStockOther).as("Stock should differ between the two cities").isNotEqualTo(outOfStockHome);
     }
 
+    @TmsLink("TC-473")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 2)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify a cart item unavailable in the new delivery city shows Out of stock with Remove and Replace")

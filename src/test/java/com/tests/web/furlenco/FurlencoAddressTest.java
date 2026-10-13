@@ -16,6 +16,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -65,6 +66,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         assertThat(addressPage.isAddNewAddressAvailable()).as("Add New Address should be offered").isTrue();
     }
 
+    @TmsLink("TC-445")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 2)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify a saved address can be confirmed and leads to the Order Summary")
@@ -77,6 +79,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         assertThat(summary.isLoaded()).as("Order Summary should load after confirming the address").isTrue();
         assertThat(summary.isPriceBreakdownDisplayed()).as("Price breakdown should be shown").isTrue();
     }
+    @TmsLink("TC-435")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 3)
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify Add New Address reaches the Enter Complete Address form (does not save)")
@@ -91,6 +94,8 @@ public class FurlencoAddressTest extends BaseWebTest {
         assertThat(newAddress.isSaveAddressAvailable()).as("Save Address button").isTrue();
     }
 
+    @TmsLink("TC-434")
+    @TmsLink("TC-436")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 4)
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify address search returns suggestions for a pincode and for an area")
@@ -138,6 +143,8 @@ public class FurlencoAddressTest extends BaseWebTest {
         }
     }
 
+    @TmsLink("TC-437")
+    @TmsLink("TC-438")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 6)
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify an invalid address and an invalid pincode return no suggestions")
@@ -152,6 +159,7 @@ public class FurlencoAddressTest extends BaseWebTest {
                 .as("Suggestions for an invalid pincode").isZero();
     }
 
+    @TmsLink("TC-484")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 7)
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify the delivery address can be changed from the Order Summary")

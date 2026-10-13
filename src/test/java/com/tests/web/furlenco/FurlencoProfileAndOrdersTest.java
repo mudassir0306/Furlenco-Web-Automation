@@ -11,6 +11,8 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.TmsLink;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -104,11 +106,32 @@ public class FurlencoProfileAndOrdersTest extends BaseWebTest {
         // 4. choose Autopay mandate on payment  5. assert the mandate is set up and the order confirmed
     }
 
+    @TmsLink("TC-505")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 6, enabled = false)
     @Severity(SeverityLevel.CRITICAL)
     @Description("TODO: DIY product return without pay (needs return-flow page object)")
     public void verifyDiyReturnWithoutPay() {
         // 1. login  2. open an eligible DIY order  3. start a return  4. complete it without payment
         // 5. assert the return is created
+    }
+
+    @Test(groups = {"furlenco", "auth-profile", "backlog"}, enabled = false)
+    @TmsLink("TC-560")
+    @Description("TC-560 Login Using Database Phone Number")
+    public void testLoginUsingDatabasePhoneNumber_TC560() {
+        // TODO(TC-560): read a test phone number from the database, then log in with it and the fixed test OTP.
+        // Needs: DB access for the active environment (the Furlenco DBUtils helper has not been ported to this repo)
+        // and agreement on which table or query supplies the number. Never read real customer numbers.
+        throw new SkipException("TODO: TC-560 needs database access");
+    }
+
+    @Test(groups = {"furlenco", "orders-returns", "backlog"}, enabled = false)
+    @TmsLink("TC-563")
+    @Description("TC-563 Perform Order Management System Query")
+    public void testPerformOrderManagementSystemQuery_TC563() {
+        // TODO(TC-563): this is a backend check, not a screen flow. Confirm the Order Management System endpoint or query,
+        // its auth, and what to assert (for example an order's status for a seeded test order).
+        // Likely belongs in an API test class once the endpoint is known.
+        throw new SkipException("TODO: TC-563 needs the OMS endpoint or query");
     }
 }
