@@ -5,9 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Common ancestor for BaseWebTest and BaseApiTest — holds anything shared by both
- * (currently just config access + logger), so a hybrid test could extend a future
- * BaseHybridTest that combines both without duplicating this bit.
+ * Common ancestor for test base classes — holds config access and the logger.
  */
 public abstract class BaseTest {
 

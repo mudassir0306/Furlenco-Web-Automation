@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       groups:
-        description: "TestNG groups to run. Empty = public (sample web + API tests on public sites). The furlenco groups need the staging VPN, so use a self-hosted runner for them."
+        description: "TestNG groups to run. Empty = furlenco (all Furlenco tests). They hit stag.furlenco.com, which needs the staging VPN, so run them on a self-hosted runner on the VPN (set the runner input)."
         required: false
         default: ""
       runner:
@@ -33,7 +33,7 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'public' }}"
+        run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'furlenco' }}"
 
       - name: Upload Allure results
         if: always()

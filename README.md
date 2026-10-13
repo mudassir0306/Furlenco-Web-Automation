@@ -22,9 +22,8 @@ On first run on a new machine, Playwright downloads the required browsers automa
 |---|---|
 | All tests | `mvn test` |
 | Smoke tests only | `mvn test -Dgroups=smoke` |
-| Public sites only (what CI runs by default) | `mvn test -Dgroups=public` |
+| All Furlenco tests (CI default; needs staging VPN) | `mvn test -Dgroups=furlenco` |
 | Web tests only | `mvn test -Dgroups=web` |
-| API tests only | `mvn test -Dgroups=api` |
 | Run on Firefox | `mvn test -Dbrowser=firefox` |
 | Run headed | `mvn test -Dheadless=false` |
 | Change parallel forks | `mvn test -Dforks=1` |
@@ -37,7 +36,6 @@ Configuration is loaded by `com.framework.config.ConfigManager` from `src/test/r
 3. env-scoped key in the env file (e.g. `qa.web.base.url`)
 4. plain key in the env file (e.g. `web.base.url`)
 
-The sample public-site tests (`com.tests.web.LoginTest`, `com.tests.api.PostsApiTest`) read `sample.web.*` / `sample.api.base.url` from `config/qa.properties`, with built-in defaults if absent. The root `src/test/resources/config.properties` is no longer read by the framework.
 
 ## Reports
 
@@ -62,11 +60,11 @@ npx playwright show-trace target/traces/<test>-trace.zip
 
 Single framework, `com.framework`:
 
-- `src/main/java/com/framework` - `base/BasePage`, `config/ConfigManager`, `driver/PlaywrightManager`, `api/ApiClient`, `listeners/` (`TestListener`, retry), `utils/`
-- `src/test/java/com/tests` - `base/` (BaseTest, BaseWebTest, BaseApiTest), `pages/` (page objects), `web/`, `api/` tests
+- `src/main/java/com/framework` - `base/BasePage`, `config/ConfigManager`, `driver/PlaywrightManager`, `listeners/` (`TestListener`, retry), `utils/`
+- `src/test/java/com/tests` - `base/` (BaseTest, BaseWebTest), `pages/furlenco` (page objects), `web/furlenco` tests
 - `src/test/resources/config/<env>.properties` - environment configuration
 - `src/test/resources/META-INF/services/org.testng.ITestNGListener` - registers `TestListener` and `RetryTransformer`
-- `.github/workflows/tests.yml` - CI workflow for push, PR, and manual runs
+- `.github/workflows/tests.yml` - CI workflow for push, PR, and manual runs (default group `furlenco`; use a self-hosted runner on the staging VPN)
 
 ## Parallelism
 
@@ -81,9 +79,9 @@ The GitHub Actions workflow in `.github/workflows/tests.yml` runs on push, pull 
 `docs/test-case-traceability.md` maps the test-case sheet (TC ids) to the tests tagged with `@TmsLink("TC-nnn")` in `src/test/java`. It is generated; do not edit the table by hand.
 
 ```bash
-python scripts/generate_traceability.py                  # regenerate the doc from the code + existing doc
-python scripts/generate_traceability.py --check          # exit 1 if the doc is stale (for CI)
-python scripts/generate_traceability.py --feed Test_Cases_Feed.xlsx   # use the sheet ('Playwright-Java Feed'); needs openpyxl, or pass a CSV export
+java src/test/java/com/tools/TraceabilityGenerator.java                  # regenerate the doc from the code + existing doc (run from the repo root, JDK 25)
+java src/test/java/com/tools/TraceabilityGenerator.java --check          # exit 1 if the doc is stale (for CI)
+java src/test/java/com/tools/TraceabilityGenerator.java --feed feed.csv  # use a CSV export of sheet 'Playwright-Java Feed' as scenario source (.xlsx not read)
 ```
 
 A test with `enabled = false` is a `skeleton`, an enabled one is `implemented`. A TC id shared by several scenarios, a missing TC id or a non-descriptive scenario name is `needs-clarification`. Without `--feed`, scenario names and notes are read from the existing doc, so hand-written notes are kept.
