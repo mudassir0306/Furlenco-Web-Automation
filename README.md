@@ -4,7 +4,7 @@ Web UI and API test automation built with Playwright for Java, TestNG, and Allur
 
 ## Prerequisites
 
-- Java 17+
+- Java 25+
 - Maven 3.9+
 - Optional: [Allure CLI](https://allurereport.org/docs/install/) for local report viewing
 
