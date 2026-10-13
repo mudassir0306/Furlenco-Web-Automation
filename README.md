@@ -84,3 +84,15 @@ Playwright Java is not safe to share a single browser instance across threads in
 ## CI
 
 The GitHub Actions workflow in `.github/workflows/tests.yml` runs on push, pull requests, and manual dispatch, supports a test group and browser input, and uploads both Allure results and failure artifacts.
+
+## Traceability
+
+`docs/test-case-traceability.md` maps the test-case sheet (TC ids) to the tests tagged with `@TmsLink("TC-nnn")` in `src/test/java`. It is generated; do not edit the table by hand.
+
+```bash
+python scripts/generate_traceability.py                  # regenerate the doc from the code + existing doc
+python scripts/generate_traceability.py --check          # exit 1 if the doc is stale (for CI)
+python scripts/generate_traceability.py --feed Test_Cases_Feed.xlsx   # use the sheet ('Playwright-Java Feed'); needs openpyxl, or pass a CSV export
+```
+
+A test with `enabled = false` is a `skeleton`, an enabled one is `implemented`. A TC id shared by several scenarios, a missing TC id or a non-descriptive scenario name is `needs-clarification`. Without `--feed`, scenario names and notes are read from the existing doc, so hand-written notes are kept.
