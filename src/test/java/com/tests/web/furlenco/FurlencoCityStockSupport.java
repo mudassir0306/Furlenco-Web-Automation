@@ -2,6 +2,7 @@ package com.tests.web.furlenco;
 
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartPage;
+import com.tests.pages.furlenco.FurlencoExperiments;
 import com.tests.pages.furlenco.FurlencoHomePage;
 import com.tests.pages.furlenco.FurlencoPdpPage;
 import com.tests.pages.furlenco.FurlencoStockPage;
@@ -30,6 +31,8 @@ public abstract class FurlencoCityStockSupport extends BaseWebTest {
     @BeforeMethod(alwaysRun = true)
     public void initStockPages() {
         furlencoUrl = config.get("furlenco.base.url", "https://www.furlenco.com");
+        // These tests open URLs directly, so pin the A/B cookie here (before any navigation) when enabled.
+        FurlencoExperiments.pinIfEnabled(page.context(), furlencoUrl);
         homePage = new FurlencoHomePage(page);
         stockPage = new FurlencoStockPage(page);
         pdpPage = new FurlencoPdpPage(page);

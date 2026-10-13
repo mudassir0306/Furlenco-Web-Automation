@@ -45,7 +45,7 @@ public final class FurlencoExperiments {
             + "{\"name\":\"UnlmtdNexa\",\"value\":\"VariantA\",\"moengageAttributeName\":\"UnlmtdNexa\",\"moengageAttributeValue\":\"VariantA\",\"isActive\":true,\"otherVariants\":[\"VariantB\"]},"
             + "{\"name\":\"LoginCitySelector\",\"value\":\"VariantA\",\"moengageAttributeName\":\"LoginCitySelector\",\"moengageAttributeValue\":\"VariantA\",\"isActive\":true,\"otherVariants\":[\"VariantB\"]},"
             + "{\"name\":\"AutopayIncentive\",\"value\":\"VariantA\",\"moengageAttributeName\":\"AutopayIncentive\",\"moengageAttributeValue\":\"VariantA\",\"isActive\":true,\"otherVariants\":[\"VariantB\"]},"
-            + "{\"name\":\"CheckoutRevamp\",\"value\":\"VariantA\",\"moengageAttributeName\":\"CheckoutRevamp\",\"moengageAttributeValue\":\"VariantA\",\"isActive\":true,\"otherVariants\":[\"VariantB\"]}"
+            + "{\"name\":\"CheckoutRevamp\",\"value\":\"%2$s\",\"moengageAttributeName\":\"CheckoutRevamp\",\"moengageAttributeValue\":\"%2$s\",\"isActive\":true,\"otherVariants\":[\"VariantB\"]}"
             + "]";
 
     private FurlencoExperiments() {
@@ -68,7 +68,9 @@ public final class FurlencoExperiments {
             return;
         }
 
-        String cookieValue = String.format(EXPERIMENTS_TEMPLATE, variant);
+        // CheckoutRevamp decides which cart/checkout UI is served (observed 2026-10-07 on stag).
+        String checkoutVariant = config.get("furlenco.experiment.checkout.revamp.variant", "VariantA");
+        String cookieValue = String.format(EXPERIMENTS_TEMPLATE, variant, checkoutVariant);
         Cookie cookie = new Cookie("_experiments", cookieValue)
                 .setDomain(host)
                 .setPath("/")
