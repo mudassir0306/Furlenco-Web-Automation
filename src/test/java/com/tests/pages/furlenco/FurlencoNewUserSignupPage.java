@@ -27,9 +27,11 @@ public class FurlencoNewUserSignupPage extends BasePage {
     // ("you are new"), case-insensitively (Playwright's :text() default).
     private static final String NEW_USER_HEADING = ":text(\"you are new\")";
     // Placeholders also vary by variant ("Enter your Name"/"Enter your Email" vs "Name"/"Email
-    // Address") — match by substring+case-insensitive rather than exact text.
-    private static final String NAME_INPUT = "input[placeholder*='name' i]";
-    private static final String EMAIL_INPUT = "input[placeholder*='email' i]";
+    // Address") — match by substring+case-insensitive rather than exact text. A third variant (seen
+    // on staging 2026-10-14) has NO placeholder at all: plain type=text (name) and type=email inputs.
+    private static final String NAME_INPUT =
+            "input[placeholder*='name' i], input[type='text'][name*='name' i], input[type='text']:not([placeholder])";
+    private static final String EMAIL_INPUT = "input[placeholder*='email' i], input[type='email']";
     private static final String WHATSAPP_OPT_IN_CHECKBOX = "input[type='checkbox']";
     private static final String CONTINUE_BUTTON = "button:has-text('Continue')";
     private static final String TERMS_OF_SERVICE_LINK =

@@ -87,13 +87,42 @@ java src/test/java/com/tools/TraceabilityGenerator.java --feed feed.csv  # use a
 A test with `enabled = false` is a `skeleton`, an enabled one is `implemented`. A TC id shared by several scenarios, a missing TC id or a non-descriptive scenario name is `needs-clarification`. Without `--feed`, scenario names and notes are read from the existing doc, so hand-written notes are kept.
 
 ## Login test data
-
 Staging accepts any phone number with the default OTP (`test.user.otp`, 1234), so tests log in with a
 **fresh random number each time** via `FurlencoLoginPage.loginAsFreshUser()` (new-user signup is
 completed automatically) instead of a fixed, rate-limit-prone account. Tests that need pre-existing
-orders or saved addresses use the fixed `test.user.history.username` via
-`loginWithHistoryAccount()`. Every login is recorded by `LoginDataRecorder`:
+orders, saved addresses or cancellable orders log in with a seed account via
+`loginWithSeed(...)` (see below). Every login is recorded by `LoginDataRecorder`:
 
 - Allure: a "Login test data" JSON attachment plus `login.*` parameters on the test.
-- CSV: `target/test-data/login-attempts.csv` (timestamp, test, kind FRESH/EXISTING, phone, otp,
-  name, email, outcome); safe across parallel forks.
+- CSV: `target/test-data/login-attempts.csv` (timestamp, test, kind FRESH/EXISTING, label, masked
+  phone, otp, name, email, outcome, otpWaitMs, submitWaitMs); safe across parallel forks.
+- Phone numbers are **always masked** (first 2 + last 2 digits, e.g. `90******52`) and tagged with the
+  seed label (`seed-cancel-buy-2`) or `fresh`; the full number is never written to any output.
+
+**OTP lag:** the OTP request on staging can be slow (button disabled / `aria-busy`). The Continue
+click waits for an idle button, then waits for the OTP boxes up to `login.otp.wait.ms` (default
+60000) and for login to finish up to `login.submit.wait.ms` (default 60000). Elapsed times are logged
+and recorded as `otpWaitMs` / `submitWaitMs`.
+
+## Seed test accounts
+
+A few tests need accounts that already have data. They come from `com.framework.utils.SeedUsers`:
+
+| Pool (key / env var) | Used by |
+|---|---|
+| `seed.history.rentbuy` / `SEED_HISTORY_RENTBUY` | My Orders, order details (needs Rent and Buy history); read-only, round-robin |
+| `seed.history.rent` / `SEED_HISTORY_RENT` | many fulfilled Rent orders; read-only |
+| `seed.address` / `SEED_ADDRESS` | saved-address, change-address, checkout and successful-order tests; read-only |
+| `seed.cancel.buy` / `SEED_CANCEL_BUY` | Cancel Buy order; **consumed** per run |
+| `seed.cancel.unlimited` / `SEED_CANCEL_UNLIMITED` | Cancel Unlimited (Rent) order; **consumed** per run |
+
+Supply them either locally in `src/test/resources/seed/seed-users.local.properties` (copy
+`seed-users.example.properties`; comma-separated 10-digit numbers) or as environment variables /
+CI secrets with the same comma-separated format (the file wins per pool). **Real numbers must never
+be committed**: `*.local.properties` and `*.consumed` under `src/test/resources/seed/` are gitignored.
+
+Cancel tests reserve an account via `SeedUsers.acquireCancelCandidate(pool)`, which records it in
+`seed-consumed.local.consumed` under a file lock (safe for parallel forks) and never hands it out
+again; an account whose cancel step never ran is released. In CI the consumed file is ephemeral, so
+refill/rotate the cancel secrets after each run. When a pool is empty or exhausted the dependent
+test is **skipped** (TestNG `SkipException`) with a clear reason rather than failed.

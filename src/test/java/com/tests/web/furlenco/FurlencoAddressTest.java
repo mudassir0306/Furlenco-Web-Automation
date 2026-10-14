@@ -2,6 +2,7 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.framework.utils.SeedUsers;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoCheckoutAddressPage;
@@ -44,18 +45,19 @@ public class FurlencoAddressTest extends BaseWebTest {
         return reachAddressStep(false);
     }
 
-    /** Needs the fixed history account: relies on its pre-existing saved address. */
+    /** Needs a seed.address account (pre-existing saved address); skips when none is configured. */
     private FurlencoCheckoutAddressPage reachAddressStepWithSavedAddress() {
         return reachAddressStep(true);
     }
 
-    private FurlencoCheckoutAddressPage reachAddressStep(boolean useHistoryAccount) {
+    private FurlencoCheckoutAddressPage reachAddressStep(boolean useSeedAddress) {
+        SeedUsers.SeedUser seed = useSeedAddress ? SeedUsers.require(SeedUsers.Pool.ADDRESS) : null;
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            if (useHistoryAccount) {
-                loginPage.loginWithHistoryAccount(); // needs the saved addresses of the fixed account
+            if (useSeedAddress) {
+                loginPage.loginWithSeed(seed); // needs the saved addresses of a seed.address account
             } else {
                 loginPage.loginAsFreshUser();
             }
@@ -129,11 +131,12 @@ public class FurlencoAddressTest extends BaseWebTest {
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify Change on the Cart delivery address opens the saved address list")
     public void verifyChangeAddressFromCart() {
+        SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.ADDRESS);
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithHistoryAccount(); // needs the saved addresses of the fixed account
+            loginPage.loginWithSeed(seed); // needs the saved addresses of a seed.address account
         }
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");

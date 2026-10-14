@@ -14,9 +14,13 @@ public final class LoginDefaults {
         return config.get("test.user.otp", config.get("test.user.password", ""));
     }
 
-    /** Fixed account with pre-existing orders/addresses ({@code test.user.history.username}, else {@code test.user.username}). */
-    public static String historyPhone() {
-        ConfigManager config = ConfigManager.getInstance();
-        return config.get("test.user.history.username", config.get("test.user.username", ""));
+    /** Max wait for the OTP boxes after Continue ({@code login.otp.wait.ms}, default 60000): the OTP request can lag. */
+    public static long otpWaitMs() {
+        return ConfigManager.getInstance().getInt("login.otp.wait.ms", 60000);
+    }
+
+    /** Max wait for login to complete after submitting the OTP ({@code login.submit.wait.ms}, default 60000). */
+    public static long submitWaitMs() {
+        return ConfigManager.getInstance().getInt("login.submit.wait.ms", 60000);
     }
 }

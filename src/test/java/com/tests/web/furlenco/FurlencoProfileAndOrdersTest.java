@@ -7,6 +7,7 @@ import com.tests.pages.furlenco.FurlencoHomePage;
 import com.framework.utils.LoginDataRecorder;
 import com.framework.utils.LoginTestData;
 import com.framework.utils.RandomDataUtils;
+import com.framework.utils.SeedUsers;
 import com.tests.pages.furlenco.FurlencoLoginPage;
 import com.tests.pages.furlenco.FurlencoMyOrdersPage;
 import io.qameta.allure.Description;
@@ -24,7 +25,7 @@ import org.testng.annotations.Test;
  * User Login with OTP Verification, Verify Order Details Consistency, Upsell with mandate
  * Autopay, DIY return).
  * <p>
- * Login uses {@code test.user.history.username} / {@code test.user.otp} (fixed account with existing orders) for order tests, and fresh random numbers for the pure login tests from the
+ * Login uses a {@code seed.history.rentbuy} seed account (see SeedUsers) with {@code test.user.otp} for order tests, and fresh random numbers for the pure login tests from the
  * active config. The Upsell/Autopay and DIY return tests are disabled: they need page objects for
  * flows whose locators have not been inspected.
  */
@@ -41,11 +42,12 @@ public class FurlencoProfileAndOrdersTest extends BaseWebTest {
         homePage = new FurlencoHomePage(page);
     }
 
-    /** Fixed history account: the callers below assert on its pre-existing orders. */
+    /** Seed account with Rent + Buy order history (read-only); skips when no seed pool is configured. */
     private void login() {
+        SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.HISTORY_RENTBUY);
         FurlencoLoginPage loginPage = homePage.openLogin();
         assertThat(loginPage.isOpen()).as("Login dialog should open from the Account menu").isTrue();
-        LoginTestData login = loginPage.loginWithHistoryAccount();
+        LoginTestData login = loginPage.loginWithSeed(seed);
         assertThat(login.succeeded()).as("User should be logged in after a valid OTP").isTrue();
     }
 
@@ -74,8 +76,9 @@ public class FurlencoProfileAndOrdersTest extends BaseWebTest {
         // Intentionally wrong OTP (not the default): the login must be rejected.
         loginPage.enterOtpAndSubmit("0000");
         boolean loggedIn = loginPage.isLoggedIn();
-        LoginDataRecorder.record(LoginDataRecorder.newRecord(LoginTestData.Kind.FRESH, phone, "0000", "", "",
-                loggedIn ? LoginTestData.FAILED : LoginTestData.LOGIN_REJECTED));
+        LoginDataRecorder.record(LoginDataRecorder.newRecord(LoginTestData.Kind.FRESH, null, phone, "0000", "", "",
+                loggedIn ? LoginTestData.FAILED : LoginTestData.LOGIN_REJECTED,
+                loginPage.getLastOtpWaitMs(), loginPage.getLastSubmitWaitMs()));
 
         assertThat(loggedIn).as("A wrong OTP must not log the user in").isFalse();
     }

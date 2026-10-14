@@ -31,9 +31,10 @@ public final class RandomDataUtils {
         return "furlenco.qa." + System.currentTimeMillis() + "." + RANDOM.nextInt(10000) + "@example.com";
     }
 
-    /** A random display name for new-account signup flows. */
+    /** A random letters-only display name for new-account signup flows (digits fail the form validation). */
     public static String randomName() {
         String[] names = {"Asha", "Rohan", "Kavya", "Vikram", "Meera", "Arjun", "Priya", "Karan"};
-        return names[RANDOM.nextInt(names.length)] + " QA" + RANDOM.nextInt(1000);
+        String[] surnames = {"Sharma", "Verma", "Iyer", "Nair", "Reddy", "Khan", "Gupta", "Mehta"};
+        return names[RANDOM.nextInt(names.length)] + " " + surnames[RANDOM.nextInt(surnames.length)];
     }
 }

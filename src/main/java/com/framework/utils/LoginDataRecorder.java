@@ -24,18 +24,23 @@ public final class LoginDataRecorder {
 
     private static final Logger LOGGER = LogManager.getLogger(LoginDataRecorder.class);
     private static final Path CSV = Paths.get("target", "test-data", "login-attempts.csv");
-    private static final String HEADER = "timestamp,testName,kind,phone,otp,name,email,outcome";
+    private static final String HEADER = "timestamp,testName,kind,label,phone,otp,name,email,outcome,otpWaitMs,submitWaitMs";
     private static final Object LOCK = new Object();
 
     private LoginDataRecorder() {
     }
 
-    /** Builds a record stamped with now and the current test name. */
-    public static LoginTestData newRecord(LoginTestData.Kind kind, String phone, String otp,
-                                          String name, String email, String outcome) {
-        return new LoginTestData(currentTestName(), kind, phone, otp,
+    /**
+     * Builds a record stamped with now and the current test name. The phone is masked here and the
+     * full number is not retained; {@code label} is the seed label, or null/blank for "fresh".
+     */
+    public static LoginTestData newRecord(LoginTestData.Kind kind, String label, String phone, String otp,
+                                          String name, String email, String outcome,
+                                          long otpWaitMs, long submitWaitMs) {
+        return new LoginTestData(currentTestName(), kind,
+                label == null || label.isBlank() ? "fresh" : label, LoginTestData.mask(phone), otp,
                 name == null ? "" : name, email == null ? "" : email,
-                Instant.now().toString(), outcome);
+                Instant.now().toString(), outcome, otpWaitMs, submitWaitMs);
     }
 
     /** Attaches the record to the Allure test and appends it to the CSV. Never throws. */
@@ -44,15 +49,19 @@ public final class LoginDataRecorder {
             String json = "{\n"
                     + "  \"testName\": " + q(d.testName()) + ",\n"
                     + "  \"kind\": " + q(d.kind().name()) + ",\n"
-                    + "  \"phone\": " + q(d.phone()) + ",\n"
+                    + "  \"label\": " + q(d.label()) + ",\n"
+                    + "  \"phone\": " + q(d.maskedPhone()) + ",\n"
                     + "  \"otp\": " + q(d.otp()) + ",\n"
                     + "  \"name\": " + q(d.name()) + ",\n"
                     + "  \"email\": " + q(d.email()) + ",\n"
                     + "  \"timestamp\": " + q(d.timestamp()) + ",\n"
-                    + "  \"outcome\": " + q(d.outcome()) + "\n}";
+                    + "  \"outcome\": " + q(d.outcome()) + ",\n"
+                    + "  \"otpWaitMs\": " + d.otpWaitMs() + ",\n"
+                    + "  \"submitWaitMs\": " + d.submitWaitMs() + "\n}";
             Allure.addAttachment("Login test data", "application/json", json, ".json");
             Allure.parameter("login.kind", d.kind().name());
-            Allure.parameter("login.phone", d.phone());
+            Allure.parameter("login.label", d.label());
+            Allure.parameter("login.phone", d.maskedPhone());
             Allure.parameter("login.outcome", d.outcome());
         } catch (Throwable t) {
             LOGGER.debug("Could not attach login data to Allure (no test context?): {}", t.getMessage());
@@ -62,13 +71,14 @@ public final class LoginDataRecorder {
         } catch (Throwable t) {
             LOGGER.warn("Could not append login data to {}: {}", CSV, t.getMessage());
         }
-        LOGGER.info("Login test data: kind={} phone={} outcome={}", d.kind(), d.phone(), d.outcome());
+        LOGGER.info("Login test data: kind={} label={} outcome={} otpWaitMs={} submitWaitMs={}", d.kind(), d.label(), d.outcome(), d.otpWaitMs(), d.submitWaitMs());
         return d;
     }
 
     private static void appendCsv(LoginTestData d) throws IOException {
         String row = String.join(",", csv(d.timestamp()), csv(d.testName()), csv(d.kind().name()),
-                csv(d.phone()), csv(d.otp()), csv(d.name()), csv(d.email()), csv(d.outcome())) + "\n";
+                csv(d.label()), csv(d.maskedPhone()), csv(d.otp()), csv(d.name()), csv(d.email()),
+                csv(d.outcome()), String.valueOf(d.otpWaitMs()), String.valueOf(d.submitWaitMs())) + "\n";
         synchronized (LOCK) {
             Files.createDirectories(CSV.getParent());
             try (var ch = java.nio.channels.FileChannel.open(CSV, StandardOpenOption.CREATE,
