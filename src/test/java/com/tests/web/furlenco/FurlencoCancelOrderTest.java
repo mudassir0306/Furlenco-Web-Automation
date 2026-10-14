@@ -47,7 +47,7 @@ public class FurlencoCancelOrderTest extends BaseWebTest {
     private void login() {
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            loginPage.loginWithHistoryAccount(); // needs a cancellable pre-existing order
         }
     }
 

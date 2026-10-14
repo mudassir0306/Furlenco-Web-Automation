@@ -4,6 +4,9 @@ import com.framework.base.BasePage;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.framework.utils.LoginDataRecorder;
+import com.framework.utils.LoginTestData;
+import com.framework.utils.RandomDataUtils;
 import com.framework.utils.WaitUtils;
 import io.qameta.allure.Step;
 import org.apache.logging.log4j.LogManager;
@@ -13,8 +16,14 @@ import java.time.Duration;
 
 /**
  * Page Object for the Furlenco Login dialog: phone number + 4-digit OTP (not a password) —
- * {@code test.user.password} in the environment properties files holds the fixed test OTP, not a
- * real password.
+ * {@code test.user.otp} in the environment properties files holds the default test OTP, not a
+ * real password. Staging accepts any phone number with that OTP.
+ * <p>
+ * <b>Login test data:</b> {@link #loginAsFreshUser()} logs in with a new random number every time
+ * (completing signup if prompted) and {@link #loginWithExistingAccount(String)} /
+ * {@link #loginWithHistoryAccount()} use the fixed account for tests needing pre-existing orders or
+ * addresses. Each call is recorded by {@link LoginDataRecorder}: a "Login test data" attachment +
+ * parameters on the Allure test, and a row in {@code target/test-data/login-attempts.csv}.
  * <p>
  * <b>Verified against two live, materially different implementations</b> (2026-09-16), confirming
  * Furlenco's live A/B experiment framework (see {@link FurlencoExperiments}) changes not just
@@ -113,8 +122,8 @@ public class FurlencoLoginPage extends BasePage {
     }
 
     /**
-     * Full login flow: phone number + OTP. Uses {@code test.user.username}/{@code test.user.password}
-     * from the active environment's properties file (the latter holds the fixed test OTP, e.g.
+     * Full login flow: phone number + OTP. Callers pass the phone and OTP (see {@link LoginDefaults}; keys {@code test.user.history.username}/{@code test.user.otp})
+     * from the active environment (the OTP is the fixed test OTP, e.g.
      * {@code 1234}) — callers pull those via {@code ConfigManager} rather than hardcoding them.
      */
     @Step("Login with phone number and OTP")
@@ -128,6 +137,67 @@ public class FurlencoLoginPage extends BasePage {
                             + "against a live session.");
         }
         enterOtpAndSubmit(otp);
+    }
+
+    /**
+     * Logs in with a brand-new random phone number and the default OTP, completing the new-user
+     * signup step (random name/email) if prompted, and records the data via
+     * {@link LoginDataRecorder}. Preferred over a fixed account: staging accepts any number, so
+     * there is no stale/rate-limited account to trip over.
+     *
+     * @return the recorded data; check {@link LoginTestData#succeeded()}
+     */
+    @Step("Login as a fresh random user")
+    public LoginTestData loginAsFreshUser() {
+        String phone = RandomDataUtils.randomIndianMobileNumber();
+        String otp = LoginDefaults.otp();
+        String name = "";
+        String email = "";
+        String outcome;
+        try {
+            loginWithOtp(phone, otp);
+            if (isNewUserSignupPromptDisplayed()) {
+                name = RandomDataUtils.randomName();
+                email = RandomDataUtils.randomEmail();
+                getNewUserSignupPage().enterName(name).enterEmail(email).clickContinue();
+                outcome = isLoggedIn() ? LoginTestData.SIGNED_UP_AND_LOGGED_IN : LoginTestData.FAILED;
+            } else {
+                outcome = isLoggedIn() ? LoginTestData.LOGGED_IN : LoginTestData.FAILED;
+            }
+        } catch (RuntimeException e) {
+            LoginDataRecorder.record(LoginDataRecorder.newRecord(
+                    LoginTestData.Kind.FRESH, phone, otp, name, email, LoginTestData.FAILED));
+            throw e;
+        }
+        return LoginDataRecorder.record(LoginDataRecorder.newRecord(
+                LoginTestData.Kind.FRESH, phone, otp, name, email, outcome));
+    }
+
+    /**
+     * Logs in with a fixed, pre-existing account (needed only when a test relies on existing
+     * orders or saved addresses — see {@code test.user.history.username}) and records it as
+     * {@code EXISTING}.
+     */
+    @Step("Login with existing account")
+    public LoginTestData loginWithExistingAccount(String phone) {
+        String otp = LoginDefaults.otp();
+        String outcome;
+        try {
+            loginWithOtp(phone, otp);
+            outcome = isLoggedIn() ? LoginTestData.LOGGED_IN : LoginTestData.FAILED;
+        } catch (RuntimeException e) {
+            LoginDataRecorder.record(LoginDataRecorder.newRecord(
+                    LoginTestData.Kind.EXISTING, phone, otp, "", "", LoginTestData.FAILED));
+            throw e;
+        }
+        return LoginDataRecorder.record(LoginDataRecorder.newRecord(
+                LoginTestData.Kind.EXISTING, phone, otp, "", "", outcome));
+    }
+
+    /** {@link #loginWithExistingAccount(String)} with {@code test.user.history.username}. */
+    @Step("Login with the fixed history account")
+    public LoginTestData loginWithHistoryAccount() {
+        return loginWithExistingAccount(LoginDefaults.historyPhone());
     }
 
     @Step("Check if login succeeded")

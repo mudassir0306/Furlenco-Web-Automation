@@ -44,7 +44,15 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
     private void login() {
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            loginPage.loginAsFreshUser();
+        }
+    }
+
+    /** Needs the fixed history account: relies on its pre-existing saved address. */
+    private void loginWithSavedAddress() {
+        FurlencoLoginPage loginPage = homePage.openLogin();
+        if (loginPage.isOpen()) {
+            loginPage.loginWithHistoryAccount();
         }
     }
 
@@ -200,7 +208,7 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
     public void verifyAddressToOrderSummary() {
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
-        login();
+        loginWithSavedAddress();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
         FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);
@@ -223,7 +231,7 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
     public void verifyProceedToPaymentScreen() {
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
-        login();
+        loginWithSavedAddress();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
         FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);

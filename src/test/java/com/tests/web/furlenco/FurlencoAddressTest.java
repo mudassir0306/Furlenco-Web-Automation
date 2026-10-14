@@ -41,11 +41,24 @@ public class FurlencoAddressTest extends BaseWebTest {
     }
 
     private FurlencoCheckoutAddressPage reachAddressStep() {
+        return reachAddressStep(false);
+    }
+
+    /** Needs the fixed history account: relies on its pre-existing saved address. */
+    private FurlencoCheckoutAddressPage reachAddressStepWithSavedAddress() {
+        return reachAddressStep(true);
+    }
+
+    private FurlencoCheckoutAddressPage reachAddressStep(boolean useHistoryAccount) {
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            if (useHistoryAccount) {
+                loginPage.loginWithHistoryAccount(); // needs the saved addresses of the fixed account
+            } else {
+                loginPage.loginAsFreshUser();
+            }
         }
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
@@ -71,7 +84,7 @@ public class FurlencoAddressTest extends BaseWebTest {
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify a saved address can be confirmed and leads to the Order Summary")
     public void verifyConfirmSavedAddressLeadsToOrderSummary() {
-        FurlencoCheckoutAddressPage addressPage = reachAddressStep();
+        FurlencoCheckoutAddressPage addressPage = reachAddressStepWithSavedAddress();
 
         assertThat(addressPage.hasSavedAddress()).as("Test account should have a saved address").isTrue();
         FurlencoOrderSummaryPage summary = addressPage.confirmSelectedAddress();
@@ -120,7 +133,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            loginPage.loginWithHistoryAccount(); // needs the saved addresses of the fixed account
         }
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
@@ -167,7 +180,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         String primary = config.get("test.address.pincode.primary", "560102");
         String alternate = config.get("test.address.pincode.alternate", "560068");
 
-        FurlencoCheckoutAddressPage addressPage = reachAddressStep();
+        FurlencoCheckoutAddressPage addressPage = reachAddressStepWithSavedAddress();
         assertThat(addressPage.getSavedAddressCount()).as("Account needs saved addresses").isGreaterThan(1);
 
         FurlencoOrderSummaryPage summary = addressPage.selectSavedAddressWithPincode(primary)

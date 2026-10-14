@@ -85,3 +85,15 @@ java src/test/java/com/tools/TraceabilityGenerator.java --feed feed.csv  # use a
 ```
 
 A test with `enabled = false` is a `skeleton`, an enabled one is `implemented`. A TC id shared by several scenarios, a missing TC id or a non-descriptive scenario name is `needs-clarification`. Without `--feed`, scenario names and notes are read from the existing doc, so hand-written notes are kept.
+
+## Login test data
+
+Staging accepts any phone number with the default OTP (`test.user.otp`, 1234), so tests log in with a
+**fresh random number each time** via `FurlencoLoginPage.loginAsFreshUser()` (new-user signup is
+completed automatically) instead of a fixed, rate-limit-prone account. Tests that need pre-existing
+orders or saved addresses use the fixed `test.user.history.username` via
+`loginWithHistoryAccount()`. Every login is recorded by `LoginDataRecorder`:
+
+- Allure: a "Login test data" JSON attachment plus `login.*` parameters on the test.
+- CSV: `target/test-data/login-attempts.csv` (timestamp, test, kind FRESH/EXISTING, phone, otp,
+  name, email, outcome); safe across parallel forks.

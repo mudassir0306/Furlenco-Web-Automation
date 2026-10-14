@@ -8,6 +8,7 @@ import com.tests.pages.furlenco.FurlencoLoginPage;
 import com.tests.pages.furlenco.FurlencoPlpPage;
 import com.tests.pages.furlenco.FurlencoProductPage;
 import com.tests.pages.furlenco.FurlencoSearchResultsPage;
+import com.framework.utils.LoginTestData;
 import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
@@ -22,10 +23,10 @@ import org.testng.annotations.Test;
  * Covers the "Login" section of the manual test suite: login triggered from every entry point
  * (Profile, Checkout, Wishlist, Unlmtd PLP add-to-cart, Search add-to-cart).
  * <p>
- * Credentials come from {@code test.user.username}/{@code test.user.password} in the active
+ * Logins use a fresh random phone number each time ({@link FurlencoLoginPage#loginAsFreshUser()}) with the default OTP {@code test.user.otp} in the active
  * environment's properties file (see {@code qa.properties}/{@code staging.properties}) — never
  * hardcoded here. Login is phone number + 4-digit OTP (verified against a live staging session on
- * 2026-09-16); {@code test.user.password} holds the fixed staging test OTP, not a real password.
+ * 2026-09-16); {@code test.user.otp} holds the fixed staging test OTP, not a real password.
  * <p>
  * Verified: adding a product to cart does NOT by itself prompt login — the Login dialog only
  * appears when clicking {@code Pay ₹<amount>} on the Cart screen while unauthenticated. The
@@ -38,15 +39,11 @@ import org.testng.annotations.Test;
 public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
 
     private String furlencoUrl;
-    private String username;
-    private String otp;
     private FurlencoHomePage homePage;
 
     @BeforeMethod(alwaysRun = true)
     public void initHomePage() {
         furlencoUrl = config.get("furlenco.base.url", "https://www.furlenco.com");
-        username = config.get("test.user.username");
-        otp = config.get("test.user.password");
         homePage = new FurlencoHomePage(page);
     }
 
@@ -59,9 +56,9 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
         FurlencoLoginPage loginPage = homePage.openLogin();
         assertThat(loginPage.isOpen()).as("Login dialog should open from Account menu").isTrue();
 
-        loginPage.loginWithOtp(username, otp);
+        LoginTestData login = loginPage.loginAsFreshUser();
 
-        assertThat(loginPage.isLoggedIn()).as("User should be logged in after submitting a valid OTP").isTrue();
+        assertThat(login.succeeded()).as("User should be logged in after submitting a valid OTP").isTrue();
     }
 
     @TmsLink("TC-461")
@@ -83,8 +80,8 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
                 .isTrue();
 
         FurlencoLoginPage loginPage = new FurlencoLoginPage(page);
-        loginPage.loginWithOtp(username, otp);
-        assertThat(loginPage.isLoggedIn())
+        LoginTestData login = loginPage.loginAsFreshUser();
+        assertThat(login.succeeded())
                 .as("User should be logged in after completing login from Rent checkout")
                 .isTrue();
     }
@@ -107,8 +104,8 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
                 .isTrue();
 
         FurlencoLoginPage loginPage = new FurlencoLoginPage(page);
-        loginPage.loginWithOtp(username, otp);
-        assertThat(loginPage.isLoggedIn())
+        LoginTestData login = loginPage.loginAsFreshUser();
+        assertThat(login.succeeded())
                 .as("User should be logged in after completing login from Buy checkout")
                 .isTrue();
     }
@@ -122,8 +119,8 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
 
         FurlencoLoginPage loginPage = new FurlencoLoginPage(page);
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(username, otp);
-            assertThat(loginPage.isLoggedIn())
+            LoginTestData login = loginPage.loginAsFreshUser();
+            assertThat(login.succeeded())
                     .as("User should be logged in after completing login from Wishlist")
                     .isTrue();
         } else {
@@ -149,8 +146,8 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
                 .isTrue();
 
         FurlencoLoginPage loginPage = new FurlencoLoginPage(page);
-        loginPage.loginWithOtp(username, otp);
-        assertThat(loginPage.isLoggedIn())
+        LoginTestData login = loginPage.loginAsFreshUser();
+        assertThat(login.succeeded())
                 .as("User should be logged in after completing login from Unlmtd checkout")
                 .isTrue();
     }
@@ -174,8 +171,8 @@ public class FurlencoLoginTest extends com.tests.base.BaseWebTest {
                 .isTrue();
 
         FurlencoLoginPage loginPage = new FurlencoLoginPage(page);
-        loginPage.loginWithOtp(username, otp);
-        assertThat(loginPage.isLoggedIn())
+        LoginTestData login = loginPage.loginAsFreshUser();
+        assertThat(login.succeeded())
                 .as("User should be logged in after completing login from Search add-to-cart checkout")
                 .isTrue();
     }
