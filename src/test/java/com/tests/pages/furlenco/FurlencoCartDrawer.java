@@ -320,12 +320,21 @@ public class FurlencoCartDrawer extends BasePage {
     // labels/scope weren't disambiguated from other page checkboxes like the WhatsApp opt-in) —
     // toggleFirstVasOption() is a best-effort action on whatever the first VAS-panel checkbox is;
     // re-verify before relying on it to target a specific item.
+    // 2026-10-15 cart page (/cart) UI: a "Furlenco Care ₹NNN/mo" card with "Learn more" and an "Edit"
+    // button; the older "Value added services" heading / "Applied to N Items" text are gone. Both are
+    // matched so either layout works. This is only safe to use on the cart itself: the PDP also has a
+    // "Furlenco Care" card, so callers must open the cart first (FurlencoProductPage.goToCart()).
     private static final String VAS_SECTION_HEADING =
             ":text(\"Value added services\"), :text(\"Furlenco Care\")";
     private static final String VAS_APPLIED_COUNT_TEXT = ":text-matches(\"Applied to \\\\d+ Items?\")";
-    private static final String VAS_EDIT_TRIGGER = ":text(\"EDIT\")";
+    private static final String VAS_EDIT_TRIGGER = "button:has-text('Edit'), :text(\"EDIT\")";
     private static final String VAS_PANEL_HEADING = ":text(\"Value Added Services\")";
     private static final String VAS_PANEL_CHECKBOX = "input[type='checkbox']";
+    // 2026-10-15: the open panel has no unique heading ("Value added services" is also the section
+    // heading), but it does show a "Select all N product" control and a "Confirm" button.
+    private static final String VAS_PANEL_MARKER = ":text(\"Select all\"), button:has-text('Confirm')";
+    private static final String VAS_SELECT_ALL = ":text-matches(\"^Select all\")";
+    private static final String VAS_CONFIRM = "button:has-text('Confirm')";
 
     @Step("Check if the Value Added Services section is displayed")
     public boolean isVasSectionDisplayed() {
@@ -335,28 +344,58 @@ public class FurlencoCartDrawer extends BasePage {
     @Step("Get the VAS 'Applied to N Items' text")
     public String getVasAppliedCountText() {
         Locator text = page.locator(VAS_APPLIED_COUNT_TEXT);
-        return text.count() > 0 ? text.first().textContent().trim() : "";
+        if (text.count() > 0) {
+            return text.first().textContent().trim();
+        }
+        // Newer cart UI has no "Applied to N Items" text; the Furlenco Care card shows its price
+        // ("Furlenco Care ₹780/mo") instead, which changes with the cart's items/VAS selection.
+        Locator card = page.locator(":text(\"Furlenco Care\")").first();
+        if (card.count() > 0) {
+            try {
+                return card.locator("xpath=..").innerText(new Locator.InnerTextOptions().setTimeout(3000)).trim();
+            } catch (RuntimeException e) {
+                LOGGER.debug("Could not read the Furlenco Care card text: {}", e.getMessage());
+            }
+        }
+        return "";
     }
 
     @Step("Open the VAS edit panel")
     public FurlencoCartDrawer openVasEditPanel() {
         LOGGER.info("Opening VAS edit panel");
         page.locator(VAS_EDIT_TRIGGER).first().click();
-        page.locator(VAS_PANEL_HEADING).waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        page.locator(VAS_PANEL_MARKER).first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         return this;
     }
 
     @Step("Check if the VAS edit panel is open")
     public boolean isVasEditPanelOpen() {
-        Locator heading = page.locator(VAS_PANEL_HEADING);
-        return heading.count() > 0 && heading.first().isVisible();
+        // Open means its own controls ("Select all" / "Confirm") are visible; the heading text is shared
+        // with the section above, so it can't be used.
+        for (Locator marker : page.locator(VAS_PANEL_MARKER).all()) {
+            if (marker.isVisible()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Step("Close the VAS edit panel")
     public FurlencoCartDrawer closeVasEditPanel() {
-        LOGGER.info("Closing VAS edit panel via Escape");
+        LOGGER.info("Closing VAS edit panel");
         page.keyboard().press("Escape");
-        waitQuietly(page.locator(":text(\"Customize VAS\")").first(), WaitForSelectorState.HIDDEN, 1500);
+        waitQuietly(page.locator(VAS_PANEL_MARKER).first(), WaitForSelectorState.HIDDEN, 3000);
+        if (isVasEditPanelOpen()) {
+            // Escape didn't dismiss it: use an explicit close control if there is one, else Confirm
+            // (which closes it; callers that need the selection untouched must not have toggled anything).
+            Locator close = page.locator("button[aria-label*='close' i], button:has-text('Close')").first();
+            if (close.count() > 0 && close.isVisible()) {
+                close.click();
+            } else {
+                page.locator(VAS_CONFIRM).first().click();
+            }
+            waitQuietly(page.locator(VAS_PANEL_MARKER).first(), WaitForSelectorState.HIDDEN, 10_000);
+        }
         return this;
     }
 
@@ -366,9 +405,19 @@ public class FurlencoCartDrawer extends BasePage {
      */
     @Step("Toggle the first VAS option in the open edit panel")
     public FurlencoCartDrawer toggleFirstVasOption() {
-        LOGGER.info("Toggling first VAS checkbox");
-        page.locator(VAS_PANEL_CHECKBOX).first().click();
-        settle(1000); // TODO(verify on staging): no known element change after toggling a VAS checkbox
+        // The panel's rows use custom controls (no input[type=checkbox]); "Select all N product" toggles
+        // every row and is the one control whose label is stable.
+        LOGGER.info("Toggling VAS selection via 'Select all'");
+        page.locator(VAS_SELECT_ALL).first().click();
+        settle(500);
+        return this;
+    }
+
+    @Step("Confirm the VAS selection (closes the panel and applies it)")
+    public FurlencoCartDrawer confirmVasSelection() {
+        LOGGER.info("Confirming VAS selection");
+        page.locator(VAS_CONFIRM).first().click();
+        waitQuietly(page.locator(VAS_PANEL_MARKER).first(), WaitForSelectorState.HIDDEN, 15_000);
         return this;
     }
 

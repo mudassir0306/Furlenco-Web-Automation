@@ -59,7 +59,7 @@ public class FurlencoCartVasTest extends BaseWebTest {
             }
             productPage.clickAddToCart();
             added++;
-            FurlencoCartDrawer cartDrawer = homePage.openCart();
+            FurlencoCartDrawer cartDrawer = productPage.goToCart();
             if (cartDrawer.isVasSectionDisplayed()) {
                 return cartDrawer;
             }
@@ -107,7 +107,7 @@ public class FurlencoCartVasTest extends BaseWebTest {
 
         cartDrawer.openVasEditPanel();
         cartDrawer.toggleFirstVasOption();
-        cartDrawer.closeVasEditPanel();
+        cartDrawer.confirmVasSelection(); // the selection only applies on Confirm
 
         assertThat(cartDrawer.getVasAppliedCountText())
                 .as("Toggling a VAS option should change the applied-count text")

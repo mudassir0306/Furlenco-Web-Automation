@@ -69,6 +69,32 @@ public class FurlencoProductPage extends BasePage {
         btn.click();
     }
 
+    /**
+     * After Add to Cart the PDP shows a "Go to cart" button (verified from a failure page-text dump,
+     * 2026-10-15); clicking it is more reliable than the header cart icon, which with force=true
+     * sometimes left the cart closed. Falls back to the header icon if the button isn't there.
+     * Waits (up to 30s) for cart contents so callers get a loaded cart.
+     */
+    @Step("Go to cart from the product page")
+    public FurlencoCartDrawer goToCart() {
+        Locator goToCart = page.locator("button:has-text('Go to cart'), a:has-text('Go to cart')").first();
+        if (waitQuietly(goToCart, WaitForSelectorState.VISIBLE, 15_000)) {
+            try {
+                goToCart.click(new Locator.ClickOptions().setTimeout(15_000));
+            } catch (com.microsoft.playwright.TimeoutError e) {
+                // The click can be blocked (overlay/animation); the cart is a normal page, so go there directly.
+                LOGGER.info("'Go to cart' click timed out; navigating to /cart directly");
+                page.navigate(java.net.URI.create(page.url()).resolve("/cart").toString());
+            }
+        } else {
+            LOGGER.info("'Go to cart' not shown; using the header cart icon");
+            page.locator("button[aria-label='Cart']").first().click(new Locator.ClickOptions().setForce(true));
+        }
+        waitQuietly(page.locator(":text(\"Cost Breakup\"), button:has-text('CHECKOUT'), #empty-cart, :text(\"Rent Cart\")").first(),
+                WaitForSelectorState.VISIBLE, 30_000);
+        return new FurlencoCartDrawer(page);
+    }
+
     @Step("Check if product pricing is displayed")
     public boolean isPriceDisplayed() {
         return page.locator(PRICE_TEXT).first().isVisible();
