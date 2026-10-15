@@ -42,7 +42,7 @@ public class FurlencoMyOrdersPage extends BasePage {
     public FurlencoMyOrdersPage open(String baseUrl) {
         navigateTo(baseUrl + "/my/orders");
         page.waitForLoadState();
-        page.waitForTimeout(1500);
+        waitQuietly(page.locator(ORDER_CARD).first(), WaitForSelectorState.VISIBLE, 3000);
         return this;
     }
 
@@ -63,7 +63,7 @@ public class FurlencoMyOrdersPage extends BasePage {
         card.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         card.click();
         page.waitForLoadState();
-        page.waitForTimeout(1000);
+        waitForUrlQuietly("**/my/orders/cart-checkouts/**", 3000);
         return this;
     }
 
@@ -74,7 +74,7 @@ public class FurlencoMyOrdersPage extends BasePage {
         card.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         card.click();
         page.waitForLoadState();
-        page.waitForTimeout(1000);
+        waitForUrlQuietly("**/my/orders/cart-checkouts/**", 3000);
         return this;
     }
 
@@ -94,7 +94,7 @@ public class FurlencoMyOrdersPage extends BasePage {
         LOGGER.info("Clicking Cancel on order");
         page.locator(CANCEL_LINK).first().click();
         page.waitForLoadState();
-        page.waitForTimeout(1000);
+        waitForUrlQuietly("**/my/orders/cancel/**", 3000);
         return this;
     }
 
@@ -104,7 +104,7 @@ public class FurlencoMyOrdersPage extends BasePage {
         Locator confirmBtn = page.locator(CONFIRM_CANCEL_BUTTON).first();
         confirmBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         confirmBtn.click();
-        page.waitForTimeout(1500);
+        waitQuietly(page.locator(CANCELLED_INDICATOR).first(), WaitForSelectorState.VISIBLE, 3000);
         return this;
     }
 

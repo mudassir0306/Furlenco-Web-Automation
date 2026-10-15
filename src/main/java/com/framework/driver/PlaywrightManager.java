@@ -4,6 +4,7 @@ import com.framework.config.ConfigManager;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Tracing;
@@ -114,6 +115,21 @@ public final class PlaywrightManager {
             return new byte[0];
         }
         return page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
+    }
+
+    /** Visible text of the current page (and its URL) for failure diagnostics; empty if no page is bound. */
+    public static String capturePageText() {
+        Page page = PAGE.get();
+        if (page == null) {
+            return "";
+        }
+        try {
+            String text = page.locator("body").innerText(new Locator.InnerTextOptions().setTimeout(5000));
+            return "URL: " + page.url() + System.lineSeparator() + System.lineSeparator() + text;
+        } catch (RuntimeException e) {
+            return "URL: " + page.url() + System.lineSeparator()
+                    + "(could not read page text: " + e.getMessage() + ")";
+        }
     }
 
     public static void tearDown() {

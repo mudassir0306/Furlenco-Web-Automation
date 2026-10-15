@@ -49,7 +49,8 @@ public class FurlencoCartPage extends BasePage {
         Locator cityButton = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(city).setExact(true)).first();
         cityButton.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         cityButton.click();
-        page.waitForTimeout(2500);
+        waitQuietly(cityButton, WaitForSelectorState.HIDDEN, 5000);
+        settle(1500);
         return this;
     }
 
@@ -107,7 +108,7 @@ public class FurlencoCartPage extends BasePage {
                         new Locator.GetByRoleOptions().setName("Replace").setExact(true))
                 .nth(index).click();
         page.locator(REPLACE_DRAWER).waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.HIDDEN));
-        page.waitForTimeout(1500);
+        settle(1500);
         return this;
     }
 }

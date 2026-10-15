@@ -27,9 +27,11 @@ public class FurlencoNewUserSignupPage extends BasePage {
     // ("you are new"), case-insensitively (Playwright's :text() default).
     private static final String NEW_USER_HEADING = ":text(\"you are new\")";
     // Placeholders also vary by variant ("Enter your Name"/"Enter your Email" vs "Name"/"Email
-    // Address") — match by substring+case-insensitive rather than exact text.
-    private static final String NAME_INPUT = "input[placeholder*='name' i]";
-    private static final String EMAIL_INPUT = "input[placeholder*='email' i]";
+    // Address") — match by substring+case-insensitive rather than exact text. A third variant (seen
+    // on staging 2026-10-14) has NO placeholder at all: plain type=text (name) and type=email inputs.
+    private static final String NAME_INPUT =
+            "input[placeholder*='name' i], input[type='text'][name*='name' i], input[type='text']:not([placeholder])";
+    private static final String EMAIL_INPUT = "input[placeholder*='email' i], input[type='email']";
     private static final String WHATSAPP_OPT_IN_CHECKBOX = "input[type='checkbox']";
     private static final String CONTINUE_BUTTON = "button:has-text('Continue')";
     private static final String TERMS_OF_SERVICE_LINK =
@@ -86,7 +88,8 @@ public class FurlencoNewUserSignupPage extends BasePage {
     public FurlencoNewUserSignupPage clickContinue() {
         LOGGER.info("Clicking Continue on new-user signup");
         page.locator(CONTINUE_BUTTON).first().click();
-        page.waitForTimeout(1500);
+        waitQuietly(page.locator(ALREADY_REGISTERED_HEADING + ", " + ALREADY_REGISTERED_MESSAGE).first(), WaitForSelectorState.VISIBLE, 1500);
+        // TODO(verify on staging): returns early only when the already-registered dialog shows; else bounded 1.5s
         return this;
     }
 
@@ -102,14 +105,14 @@ public class FurlencoNewUserSignupPage extends BasePage {
     public void clickContinueAsRegisteredEmail() {
         LOGGER.info("Clicking Continue as (registered email)");
         page.locator(CONTINUE_AS_EMAIL_BUTTON).first().click();
-        page.waitForTimeout(1500);
+        settle(1500); // TODO(verify on staging): outcome of Continue-as-registered-email not observable here
     }
 
     @Step("Click 'Skip and Create a New Account' on the already-registered dialog")
     public FurlencoNewUserSignupPage clickSkipAndCreateNewAccount() {
         LOGGER.info("Clicking Skip and Create a New Account");
         page.locator(SKIP_CREATE_NEW_ACCOUNT_LINK).first().click();
-        page.waitForTimeout(1000);
+        settle(1000); // TODO(verify on staging): no known element change after Skip and Create a New Account
         return this;
     }
 

@@ -28,7 +28,7 @@ public class FurlencoStockPage extends BasePage {
     public FurlencoStockPage open(String baseUrl, String city, String categorySlug) {
         navigateTo(baseUrl + "/" + city + "/" + categorySlug + "-on-rent?collectionType=CATEGORY_RENT");
         page.locator(PRODUCT_LINKS).first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        page.waitForTimeout(1500);
+        settle(1500);
         return this;
     }
 

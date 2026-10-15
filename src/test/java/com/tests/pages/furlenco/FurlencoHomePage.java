@@ -4,9 +4,12 @@ import com.framework.base.BasePage;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.framework.utils.WaitUtils;
 import io.qameta.allure.Step;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.time.Duration;
 
 /**
  * Page Object for Furlenco Home Page (www.furlenco.com).
@@ -33,7 +36,9 @@ public class FurlencoHomePage extends BasePage {
     private static final String CITIES_DELIVER_SECTION = "text=CITIES WE DELIVER TO";
     // Category cards are plain divs with an onClick handler (not <a> tags) — text-match the card's
     // label directly, verified against a live session.
-    private static final String HOME_CATEGORY_CARD_LABEL = "p.text-center:text-is('%s')";
+    // ">> visible=true": the home page keeps hidden copies of these labels (closed mega-menu / inactive
+    // vertical tab panels), and .first() on the plain selector picked a hidden one that never became visible.
+    private static final String HOME_CATEGORY_CARD_LABEL = "p.text-center:text-is('%s') >> visible=true";
     private static final String ACCOUNT_HOVER_CARD_CONTENT = "[data-slot='hover-card-content']";
     private static final String ACCOUNT_HOVER_CARD_LOGIN = "[data-slot='hover-card-content'] p:has-text('Login')";
 
@@ -64,7 +69,7 @@ public class FurlencoHomePage extends BasePage {
                 } else {
                     page.keyboard().press("Escape");
                 }
-                page.waitForTimeout(600);
+                waitQuietly(drawer.first(), WaitForSelectorState.HIDDEN, 2000);
             }
         } catch (Exception e) {
             LOGGER.debug("No modal dismiss needed: {}", e.getMessage());
@@ -90,7 +95,7 @@ public class FurlencoHomePage extends BasePage {
             Locator trigger = page.locator(CITY_TRIGGER).first();
             trigger.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
             trigger.click(new Locator.ClickOptions().setForce(true));
-            page.waitForTimeout(600);
+            waitQuietly(drawer.first(), WaitForSelectorState.VISIBLE, 2000);
         }
         return this;
     }
@@ -107,7 +112,8 @@ public class FurlencoHomePage extends BasePage {
                 : drawer.locator(String.format("p:has-text('%s'), div:has-text('%s')", cityName, cityName)).last();
         cityOption.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         cityOption.click(new Locator.ClickOptions().setForce(true));
-        page.waitForTimeout(1000);
+        waitQuietly(drawer, WaitForSelectorState.HIDDEN, 3000);
+        settle(1000);
         return this;
     }
 
@@ -128,7 +134,14 @@ public class FurlencoHomePage extends BasePage {
         pincodeInput.fill("");
         pincodeInput.pressSequentially(pincode);
         pincodeInput.press("Enter");
-        page.waitForTimeout(1500);
+        try {
+            WaitUtils.pollUntil("pincode applied (drawer closed or invalid-pincode message)",
+                    () -> !page.locator(LOCATION_DRAWER).first().isVisible()
+                            || page.locator(":text(\"Invalid Pincode\")").first().isVisible(),
+                    Duration.ofMillis(1500), Duration.ofMillis(100));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Pincode outcome not observed within bound: {}", e.getMessage());
+        }
         return this;
     }
 
@@ -152,7 +165,7 @@ public class FurlencoHomePage extends BasePage {
         searchBox.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         searchBox.click();
         searchBox.fill(query);
-        page.waitForTimeout(500);
+        waitQuietly(page.locator(SEARCH_ICON).first(), WaitForSelectorState.VISIBLE, 500);
         // Click search icon svg to submit search
         Locator searchBtn = page.locator(SEARCH_ICON).first();
         if (searchBtn.isVisible()) {
@@ -218,7 +231,7 @@ public class FurlencoHomePage extends BasePage {
         LOGGER.info("Clicking Cart button");
         dismissLocationModalIfOpen();
         page.locator(CART_BUTTON).first().click(new Locator.ClickOptions().setForce(true));
-        page.waitForTimeout(1000);
+        waitQuietly(page.locator(":text(\"Cost Breakup\"), button:has-text('CHECKOUT'), #empty-cart, :text(\"Rent Cart\")").first(), WaitForSelectorState.VISIBLE, 3000);
         return new FurlencoCartDrawer(page);
     }
 
@@ -227,7 +240,7 @@ public class FurlencoHomePage extends BasePage {
         LOGGER.info("Clicking Wishlist button");
         dismissLocationModalIfOpen();
         page.locator(WISHLIST_BUTTON).first().click(new Locator.ClickOptions().setForce(true));
-        page.waitForTimeout(500);
+        settle(500); // TODO(verify on staging): wishlist click outcome (page vs login dialog) not observable here
     }
 
     @Step("Check if Help Center link is displayed in footer")
@@ -249,9 +262,21 @@ public class FurlencoHomePage extends BasePage {
         // and intercept the click — verified against a live session.
         page.mouse().move(0, 0);
         Locator category = page.locator(String.format(HOME_CATEGORY_CARD_LABEL, categoryName)).first();
-        category.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        category.scrollIntoViewIfNeeded();
-        category.click(new Locator.ClickOptions().setForce(true));
+        boolean tileFound = waitQuietly(category, WaitForSelectorState.VISIBLE, 15_000);
+        if (tileFound) {
+            category.scrollIntoViewIfNeeded();
+            category.click(new Locator.ClickOptions().setForce(true));
+        } else {
+            // Layout variant without text tiles (seen on staging 2026-10-15: the Unlmtd page shows
+            // image banners wrapped in <a href="/unlmtd/bedroom-unlmtd?...">). Navigate to the
+            // category's own link instead, found by its slug.
+            String slug = categoryName.trim().toLowerCase().replace(' ', '-');
+            Locator link = page.locator(String.format("a[href*='%s' i]", slug)).first();
+            link.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.ATTACHED).setTimeout(30_000));
+            String href = link.getAttribute("href");
+            LOGGER.info("Category tile '{}' not visible; navigating to its link instead", categoryName);
+            page.navigate((String) page.evaluate("h => new URL(h, location.href).href", href));
+        }
         page.waitForLoadState();
         return new FurlencoPlpPage(page);
     }

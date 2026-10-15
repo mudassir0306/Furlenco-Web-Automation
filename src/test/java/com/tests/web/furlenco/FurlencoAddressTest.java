@@ -2,6 +2,7 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.framework.utils.SeedUsers;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoCheckoutAddressPage;
@@ -41,11 +42,25 @@ public class FurlencoAddressTest extends BaseWebTest {
     }
 
     private FurlencoCheckoutAddressPage reachAddressStep() {
+        return reachAddressStep(false);
+    }
+
+    /** Needs a seed.address account (pre-existing saved address); skips when none is configured. */
+    private FurlencoCheckoutAddressPage reachAddressStepWithSavedAddress() {
+        return reachAddressStep(true);
+    }
+
+    private FurlencoCheckoutAddressPage reachAddressStep(boolean useSeedAddress) {
+        SeedUsers.SeedUser seed = useSeedAddress ? SeedUsers.require(SeedUsers.Pool.ADDRESS) : null;
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            if (useSeedAddress) {
+                loginPage.loginWithSeed(seed); // needs the saved addresses of a seed.address account
+            } else {
+                loginPage.loginAsFreshUser();
+            }
         }
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
@@ -71,7 +86,7 @@ public class FurlencoAddressTest extends BaseWebTest {
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify a saved address can be confirmed and leads to the Order Summary")
     public void verifyConfirmSavedAddressLeadsToOrderSummary() {
-        FurlencoCheckoutAddressPage addressPage = reachAddressStep();
+        FurlencoCheckoutAddressPage addressPage = reachAddressStepWithSavedAddress();
 
         assertThat(addressPage.hasSavedAddress()).as("Test account should have a saved address").isTrue();
         FurlencoOrderSummaryPage summary = addressPage.confirmSelectedAddress();
@@ -116,11 +131,12 @@ public class FurlencoAddressTest extends BaseWebTest {
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify Change on the Cart delivery address opens the saved address list")
     public void verifyChangeAddressFromCart() {
+        SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.ADDRESS);
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            loginPage.loginWithSeed(seed); // needs the saved addresses of a seed.address account
         }
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
@@ -167,7 +183,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         String primary = config.get("test.address.pincode.primary", "560102");
         String alternate = config.get("test.address.pincode.alternate", "560068");
 
-        FurlencoCheckoutAddressPage addressPage = reachAddressStep();
+        FurlencoCheckoutAddressPage addressPage = reachAddressStepWithSavedAddress();
         assertThat(addressPage.getSavedAddressCount()).as("Account needs saved addresses").isGreaterThan(1);
 
         FurlencoOrderSummaryPage summary = addressPage.selectSavedAddressWithPincode(primary)

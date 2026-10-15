@@ -9,7 +9,8 @@ import org.apache.logging.log4j.Logger;
 /**
  * Thread-safe singleton config loader.
  * Resolves environment via -Denv=qa|staging|prod (defaults to qa).
- * Property resolution order for any key: JVM system property > OS environment variable > properties file.
+ * Property resolution order for any key: JVM system property > OS environment variable >
+ * env-scoped key in the properties file (e.g. "qa.web.base.url") > plain key in the properties file.
  * This keeps secrets (tokens, passwords, DB creds) out of the repo — CI injects them as env vars,
  * local dev falls back to the properties file for non-sensitive values.
  */
@@ -64,6 +65,10 @@ public final class ConfigManager {
         String envVar = System.getenv(toEnvVarName(key));
         if (envVar != null && !envVar.isBlank()) {
             return envVar;
+        }
+        String scoped = properties.getProperty(environment + "." + key);
+        if (scoped != null) {
+            return scoped;
         }
         return properties.getProperty(key, defaultValue);
     }

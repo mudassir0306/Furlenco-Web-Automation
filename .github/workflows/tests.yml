@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       groups:
-        description: "TestNG groups to run. Empty = public (sample web + API tests on public sites). The furlenco groups need the staging VPN, so use a self-hosted runner for them."
+        description: "TestNG groups to run. Empty = furlenco (all Furlenco tests). They hit stag.furlenco.com, which needs the staging VPN, so run them on a self-hosted runner on the VPN (set the runner input)."
         required: false
         default: ""
       runner:
@@ -32,8 +32,13 @@ jobs:
           java-version: 25
           cache: maven
 
+      - name: Check generated docs are current
+        run: |
+          java src/test/java/com/tools/TraceabilityGenerator.java --check || { echo "::error::docs/test-case-traceability.md is stale. Run 'java src/test/java/com/tools/TraceabilityGenerator.java' and commit."; exit 1; }
+          java src/test/java/com/tools/ProjectDocsGenerator.java --check || { echo "::error::README.md / docs/PROJECT_MASTER_PROMPT.md AUTO blocks are stale. Run 'java src/test/java/com/tools/ProjectDocsGenerator.java' and commit."; exit 1; }
+
       - name: Run tests
-        run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'public' }}"
+        run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'furlenco' }}"
 
       - name: Upload Allure results
         if: always()
@@ -47,4 +52,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failure-artifacts
-          path: artifacts/
+          path: target/traces/

@@ -6,6 +6,7 @@ import com.framework.utils.RandomDataUtils;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoHomePage;
 import com.tests.pages.furlenco.FurlencoLoginPage;
+import com.tests.pages.furlenco.LoginDefaults;
 import com.tests.pages.furlenco.FurlencoNewUserSignupPage;
 import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
@@ -25,7 +26,7 @@ import org.testng.annotations.Test;
  * Uses {@link RandomDataUtils#randomIndianMobileNumber()} for a fresh, guaranteed-new number on
  * every run — this avoids repeatedly triggering real OTP sends against one fixed test account,
  * which caused rate-limiting during this suite's own development. The fixed preprod test OTP
- * ({@code test.user.password}, e.g. {@code 1234}) is assumed to work for any new number the same
+ * ({@code test.user.otp}, e.g. {@code 1234}) is assumed to work for any new number the same
  * way it did for the two known accounts it was confirmed against — re-verify this assumption on
  * the first real run.
  * <p>
@@ -52,7 +53,7 @@ public class FurlencoNewUserSignupTest extends BaseWebTest {
 
     private FurlencoNewUserSignupPage loginWithFreshNumber() {
         String randomPhone = RandomDataUtils.randomIndianMobileNumber();
-        String otp = config.get("test.user.password");
+        String otp = LoginDefaults.otp();
         FurlencoLoginPage loginPage = homePage.openLogin();
         loginPage.loginWithOtp(randomPhone, otp);
         return loginPage.getNewUserSignupPage();

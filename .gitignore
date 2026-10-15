@@ -7,3 +7,7 @@ allure-report/
 *.iml
 .vscode/
 logs/
+
+# Local-only seed test accounts (never commit)
+src/test/resources/seed/*.local.properties
+src/test/resources/seed/*.consumed

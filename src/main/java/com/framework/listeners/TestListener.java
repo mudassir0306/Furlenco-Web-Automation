@@ -41,6 +41,7 @@ public class TestListener implements ITestListener {
         LOGGER.error("[FAIL] {} — {}", testId(result), result.getThrowable() != null
                 ? result.getThrowable().getMessage() : "no exception captured");
         attachScreenshotIfAvailable(result);
+        attachPageTextIfAvailable(result);
         safeSaveTrace(result);
     }
 
@@ -63,6 +64,21 @@ public class TestListener implements ITestListener {
                 context.getPassedTests().size(),
                 context.getFailedTests().size(),
                 context.getSkippedTests().size());
+    }
+
+    /** Attaches the page's visible text on failure: shows the real UI state (labels, errors) in plain text. */
+    private void attachPageTextIfAvailable(ITestResult result) {
+        try {
+            String text = PlaywrightManager.capturePageText();
+            if (!text.isBlank()) {
+                String bounded = text.length() > 20_000 ? text.substring(0, 20_000) : text;
+                Allure.addAttachment(testId(result) + " - Page text", "text/plain", bounded);
+                LOGGER.error("[PAGE TEXT] {}{}{}", testId(result), System.lineSeparator(),
+                        bounded.length() > 3_000 ? bounded.substring(0, 3_000) : bounded);
+            }
+        } catch (RuntimeException e) {
+            LOGGER.debug("No page text for {}: {}", testId(result), e.getMessage());
+        }
     }
 
     private void attachScreenshotIfAvailable(ITestResult result) {

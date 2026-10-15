@@ -2,6 +2,7 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.framework.utils.SeedUsers;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoCheckoutAddressPage;
@@ -51,10 +52,12 @@ public class FurlencoSuccessfulOrderTest extends BaseWebTest {
         homePage = new FurlencoHomePage(page);
     }
 
+    /** Needs a seed.address account (saved address); skips when none is configured. */
     private void login() {
+        SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.ADDRESS);
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            loginPage.loginWithSeed(seed);
         }
     }
 

@@ -2,7 +2,6 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.framework.utils.RandomDataUtils;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoHomePage;
@@ -45,13 +44,7 @@ public class FurlencoCartQuantityAndPersistenceTest extends BaseWebTest {
     private FurlencoCartDrawer addRentItemAndOpenCart() {
         homePage.open(furlencoUrl);
         FurlencoLoginPage loginPage = homePage.openLogin();
-        loginPage.loginWithOtp(RandomDataUtils.randomIndianMobileNumber(), config.get("test.user.password"));
-        if (loginPage.isNewUserSignupPromptDisplayed()) {
-            loginPage.getNewUserSignupPage()
-                    .enterName(RandomDataUtils.randomName())
-                    .enterEmail(RandomDataUtils.randomEmail())
-                    .clickContinue();
-        }
+        loginPage.loginAsFreshUser();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
         FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);

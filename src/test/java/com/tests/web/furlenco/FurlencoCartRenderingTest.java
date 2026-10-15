@@ -2,7 +2,6 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.framework.utils.RandomDataUtils;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoHomePage;
@@ -58,13 +57,7 @@ public class FurlencoCartRenderingTest extends BaseWebTest {
      */
     private void loginAndSetInventoryPincode() {
         FurlencoLoginPage loginPage = homePage.openLogin();
-        loginPage.loginWithOtp(RandomDataUtils.randomIndianMobileNumber(), config.get("test.user.password"));
-        if (loginPage.isNewUserSignupPromptDisplayed()) {
-            loginPage.getNewUserSignupPage()
-                    .enterName(RandomDataUtils.randomName())
-                    .enterEmail(RandomDataUtils.randomEmail())
-                    .clickContinue();
-        }
+        loginPage.loginAsFreshUser();
     }
 
     private void addProductFromCategory(String vertical, String categoryName) {

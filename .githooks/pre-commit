@@ -1,0 +1,20 @@
+#!/bin/sh
+# Regenerates README.md / docs/*.md AUTO blocks when framework sources change.
+# Enable once per clone:  git config core.hooksPath .githooks
+# Skip for one commit:    git commit --no-verify
+root=$(git rev-parse --show-toplevel) || exit 0
+cd "$root" || exit 0
+
+if ! git diff --cached --name-only | grep -qE '^(src/|pom\.xml$|\.github/)'; then
+  exit 0
+fi
+command -v java >/dev/null 2>&1 || { echo "pre-commit: java not found, skipping docs regeneration" >&2; exit 0; }
+
+java src/test/java/com/tools/TraceabilityGenerator.java || echo "pre-commit: TraceabilityGenerator failed (continuing)" >&2
+java src/test/java/com/tools/ProjectDocsGenerator.java || echo "pre-commit: ProjectDocsGenerator failed (continuing)" >&2
+
+# Re-stage only generated docs that are already tracked.
+for f in README.md docs/*.md; do
+  [ -f "$f" ] && git ls-files --error-unmatch "$f" >/dev/null 2>&1 && git add "$f"
+done
+exit 0

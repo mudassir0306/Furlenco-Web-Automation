@@ -2,7 +2,6 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.framework.utils.RandomDataUtils;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoHomePage;
@@ -45,19 +44,31 @@ public class FurlencoCartVasTest extends BaseWebTest {
     private FurlencoCartDrawer addRentItemAndOpenCart() {
         homePage.open(furlencoUrl);
         FurlencoLoginPage loginPage = homePage.openLogin();
-        loginPage.loginWithOtp(RandomDataUtils.randomIndianMobileNumber(), config.get("test.user.password"));
-        if (loginPage.isNewUserSignupPromptDisplayed()) {
-            loginPage.getNewUserSignupPage()
-                    .enterName(RandomDataUtils.randomName())
-                    .enterEmail(RandomDataUtils.randomEmail())
-                    .clickContinue();
-        }
+        loginPage.loginAsFreshUser();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
-        FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);
-        productPage.clickAddToCart();
-        return homePage.openCart();
+        // Not every product is eligible for VAS (e.g. a bedside table has none), and the VAS section
+        // is a cart-level section — so add purchasable products one at a time until the cart shows it.
+        // Items stay in the cart between attempts, which is fine: one VAS-eligible item is enough.
+        java.util.List<String> candidates = plpPage.getCandidateProductUrls(MAX_PRODUCTS_TO_TRY);
+        int added = 0;
+        for (String url : candidates) {
+            FurlencoProductPage productPage = plpPage.openProduct(url);
+            if (!productPage.isAddToCartButtonEnabled()) {
+                continue;
+            }
+            productPage.clickAddToCart();
+            added++;
+            FurlencoCartDrawer cartDrawer = productPage.goToCart();
+            if (cartDrawer.isVasSectionDisplayed()) {
+                return cartDrawer;
+            }
+        }
+        throw new AssertionError("No VAS-eligible product found: added " + added + " of " + candidates.size()
+                + " candidate Bedroom products to the cart but none showed a Value added services section");
     }
+
+    private static final int MAX_PRODUCTS_TO_TRY = 6;
 
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
@@ -96,7 +107,7 @@ public class FurlencoCartVasTest extends BaseWebTest {
 
         cartDrawer.openVasEditPanel();
         cartDrawer.toggleFirstVasOption();
-        cartDrawer.closeVasEditPanel();
+        cartDrawer.confirmVasSelection(); // the selection only applies on Confirm
 
         assertThat(cartDrawer.getVasAppliedCountText())
                 .as("Toggling a VAS option should change the applied-count text")

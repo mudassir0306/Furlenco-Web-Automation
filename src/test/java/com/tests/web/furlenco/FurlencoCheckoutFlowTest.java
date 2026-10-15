@@ -2,6 +2,7 @@ package com.tests.web.furlenco;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.framework.utils.SeedUsers;
 import com.tests.base.BaseWebTest;
 import com.tests.pages.furlenco.FurlencoCartDrawer;
 import com.tests.pages.furlenco.FurlencoCheckoutAddressPage;
@@ -44,7 +45,16 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
     private void login() {
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithOtp(config.get("test.user.username"), config.get("test.user.password"));
+            loginPage.loginAsFreshUser();
+        }
+    }
+
+    /** Needs a seed.address account (pre-existing saved address); skips when none is configured. */
+    private void loginWithSavedAddress() {
+        SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.ADDRESS);
+        FurlencoLoginPage loginPage = homePage.openLogin();
+        if (loginPage.isOpen()) {
+            loginPage.loginWithSeed(seed);
         }
     }
 
@@ -200,7 +210,7 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
     public void verifyAddressToOrderSummary() {
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
-        login();
+        loginWithSavedAddress();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
         FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);
@@ -223,7 +233,7 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
     public void verifyProceedToPaymentScreen() {
         homePage.open(furlencoUrl);
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
-        login();
+        loginWithSavedAddress();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
         FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);
