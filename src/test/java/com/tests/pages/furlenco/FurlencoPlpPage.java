@@ -99,15 +99,36 @@ public class FurlencoPlpPage extends BasePage {
      */
     @Step("Click first available (purchasable) product card on PLP")
     public FurlencoProductPage clickFirstAvailableProduct(int maxAttempts) {
-        Locator cards = page.locator(PRODUCT_CARDS);
-        int count = Math.min(maxAttempts, cards.count());
-        for (int i = 0; i < count; i++) {
-            Object href = cards.nth(i).evaluate("el => el.href");
-            if (href == null || href.toString().isBlank()) {
+        // Collect every candidate URL from the PLP BEFORE navigating anywhere: a lazy Locator keeps
+        // re-resolving against whatever page is current, so reusing it after page.navigate() looked
+        // for the next card on the product page and timed out (30s) whenever product 0 was disabled.
+        page.locator(PRODUCT_CARDS).first().waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.VISIBLE).setTimeout(60_000));
+        settle(1500); // let the listing finish rendering/lazy-loading more cards
+        @SuppressWarnings("unchecked")
+        java.util.List<Object> rawHrefs = (java.util.List<Object>) page.locator(PRODUCT_CARDS)
+                .evaluateAll("els => els.map(e => e.href || '')");
+        java.util.LinkedHashSet<String> productHrefs = new java.util.LinkedHashSet<>();
+        java.util.LinkedHashSet<String> otherHrefs = new java.util.LinkedHashSet<>();
+        for (Object h : rawHrefs) {
+            String href = h == null ? "" : h.toString();
+            if (href.isBlank()) {
                 continue;
             }
+            // Prefer real product/package URLs; the broad `main a:has(img)` selector can also match banners.
+            if (href.contains("/product/") || href.contains("/products/") || href.contains("/package/")) {
+                productHrefs.add(href);
+            } else {
+                otherHrefs.add(href);
+            }
+        }
+        java.util.List<String> candidates = new java.util.ArrayList<>(productHrefs.isEmpty() ? otherHrefs : productHrefs);
+        int count = Math.min(maxAttempts, candidates.size());
+        LOGGER.info("PLP offered {} candidate product URLs, trying up to {}", candidates.size(), count);
+        for (int i = 0; i < count; i++) {
+            String href = candidates.get(i);
             LOGGER.info("Trying product URL (index {}): {}", i, href);
-            page.navigate(href.toString());
+            page.navigate(href);
             page.waitForLoadState();
             FurlencoProductPage productPage = new FurlencoProductPage(page);
             if (productPage.isAddToCartButtonEnabled()) {

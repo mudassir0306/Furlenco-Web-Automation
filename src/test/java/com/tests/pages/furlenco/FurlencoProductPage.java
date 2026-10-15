@@ -50,6 +50,7 @@ public class FurlencoProductPage extends BasePage {
     @Step("Check if Add to Cart / Rent CTA button is enabled (in stock / no variant required)")
     public boolean isAddToCartButtonEnabled() {
         Locator btn = page.locator(ADD_TO_CART_BTN).first();
+        waitQuietly(btn, WaitForSelectorState.ATTACHED, 20_000); // the CTA may not be rendered yet on a slow page
         if (btn.count() == 0) {
             return false;
         }
