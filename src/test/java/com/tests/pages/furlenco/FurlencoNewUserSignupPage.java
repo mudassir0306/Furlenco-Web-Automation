@@ -133,7 +133,11 @@ public class FurlencoNewUserSignupPage extends BasePage {
     }
 
     private String clickLinkAndGetUrl(String selector) {
-        Locator link = page.locator(selector).first();
+        // The signup form is a dialog; the page footer has same-named links hidden underneath its overlay
+        // (first match on the plain selector, so clicking it timed out). Prefer the dialog's own link.
+        Locator inDialog = page.locator("[role='dialog']").locator(selector).first();
+        waitQuietly(inDialog, WaitForSelectorState.VISIBLE, 15_000);
+        Locator link = inDialog.count() > 0 ? inDialog : page.locator(selector).first();
         link.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         String target = link.getAttribute("target");
         if ("_blank".equals(target)) {
