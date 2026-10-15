@@ -16,6 +16,7 @@
         <groups></groups>
         <allure.version>2.29.0</allure.version>
         <aspectj.version>1.9.25</aspectj.version>
+        <docs.skip>false</docs.skip>
     </properties>
 
     <dependencies>
@@ -86,4 +87,61 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Opt-in docs regeneration: mvn -Pdocs test-compile   (or any phase after process-test-classes).
+            Runs the traceability + project docs generators (JDK source launcher). Exit codes 0-2 are
+            accepted so a generator problem never fails the build; skip entirely with -Ddocs.skip=true.
+            Opt-in on purpose: it needs the exec plugin download and rewrites tracked files, so the
+            default build stays offline-safe. Drift is enforced by the git hook and the CI check step.
+        -->
+        <profile>
+            <id>docs</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <configuration>
+                            <skip>${docs.skip}</skip>
+                            <executable>java</executable>
+                            <successCodes>
+                                <successCode>0</successCode>
+                                <successCode>1</successCode>
+                                <successCode>2</successCode>
+                            </successCodes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>traceability-docs</id>
+                                <phase>process-test-classes</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <arguments>
+                                        <argument>src/test/java/com/tools/TraceabilityGenerator.java</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>project-docs</id>
+                                <phase>process-test-classes</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <arguments>
+                                        <argument>src/test/java/com/tools/ProjectDocsGenerator.java</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -32,6 +32,11 @@ jobs:
           java-version: 25
           cache: maven
 
+      - name: Check generated docs are current
+        run: |
+          java src/test/java/com/tools/TraceabilityGenerator.java --check || { echo "::error::docs/test-case-traceability.md is stale. Run 'java src/test/java/com/tools/TraceabilityGenerator.java' and commit."; exit 1; }
+          java src/test/java/com/tools/ProjectDocsGenerator.java --check || { echo "::error::README.md / docs/PROJECT_MASTER_PROMPT.md AUTO blocks are stale. Run 'java src/test/java/com/tools/ProjectDocsGenerator.java' and commit."; exit 1; }
+
       - name: Run tests
         run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'furlenco' }}"
 
