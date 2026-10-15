@@ -110,12 +110,12 @@ Tests:
 | `FurlencoPdpNavigationTest` | 6 | 0 | furlenco, regression, smoke, web |
 | `FurlencoPincodeAvailabilityTest` | 3 | 0 | furlenco, regression, smoke, web |
 | `FurlencoPlpNavigationTest` | 13 | 0 | furlenco, regression, smoke, web |
-| `FurlencoProfileAndOrdersTest` | 4 | 4 | auth-profile, backlog, furlenco, orders-returns, regression, smoke, web |
+| `FurlencoProfileAndOrdersTest` | 5 | 4 | auth-profile, backlog, furlenco, orders-returns, regression, smoke, web |
 | `FurlencoRenewalTest` | 0 | 5 | backlog, furlenco, renewals |
 | `FurlencoSearchAndBrowseTest` | 2 | 0 | furlenco, regression, smoke, web |
 | `FurlencoStockAvailabilityTest` | 2 | 0 | furlenco, regression, smoke, web |
 | `FurlencoSuccessfulOrderTest` | 2 | 0 | furlenco, payment-critical, regression, web |
-| **Total (27 classes)** | **97** | **18** | |
+| **Total (27 classes)** | **98** | **18** | |
 <!-- AUTO:test-classes:END -->
 
 Listeners (`META-INF/services/org.testng.ITestNGListener`): `TestListener` (screenshots, traces, Allure) and `RetryTransformer` (applies `RetryAnalyzer` to every `@Test`). Do not add retry loops in tests.

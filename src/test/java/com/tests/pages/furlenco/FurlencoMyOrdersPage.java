@@ -27,8 +27,17 @@ public class FurlencoMyOrdersPage extends BasePage {
     private static final Logger LOGGER = LogManager.getLogger(FurlencoMyOrdersPage.class);
 
     private static final String ORDER_CARD = "a[href*='/my/orders/cart-checkouts/']";
-    private static final String BUY_ORDER_CARD = "a[href*='/my/orders/cart-checkouts/']:has-text('Buy')";
-    private static final String RENT_ORDER_CARD = "a[href*='/my/orders/cart-checkouts/']:has-text('Rent')";
+    // The order-type label ("RENTAL ORDER" / "TRACK BUY ORDER") is a sibling of the details link, NOT inside
+    // it (the link only wraps "View Details"), so find the label first and then the link of the same card.
+    private static final String LOWER_TO_UPPER = "translate(normalize-space(.),'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')";
+    private static final String CARD_LINK_OF_LABEL =
+            "/ancestor::div[.//a[contains(@href,'/my/orders/cart-checkouts/')]][1]"
+                    + "//a[contains(@href,'/my/orders/cart-checkouts/')]";
+    private static final String BUY_ORDER_CARD =
+            "xpath=//p[contains(" + LOWER_TO_UPPER + ",'BUY ORDER')]" + CARD_LINK_OF_LABEL;
+    private static final String RENT_ORDER_CARD =
+            "xpath=//p[contains(" + LOWER_TO_UPPER + ",'RENTAL ORDER') or contains(" + LOWER_TO_UPPER + ",'RENT ORDER')]"
+                    + CARD_LINK_OF_LABEL;
     private static final String CANCEL_LINK = "a[href*='/my/orders/cancel/']";
     private static final String CONFIRM_CANCEL_BUTTON =
             "button:has-text('Confirm'), button:has-text('Yes, Cancel'), button:has-text('Cancel Order')";
