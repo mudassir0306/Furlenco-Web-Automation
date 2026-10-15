@@ -160,8 +160,11 @@ public class FurlencoCartDrawer extends BasePage {
     private boolean pollForVisible(String selector) {
         for (int i = 0; i < 10; i++) {
             Locator located = page.locator(selector);
-            if (located.count() > 0 && located.first().isVisible()) {
-                return true;
+            // ANY visible match counts: the first match can be a hidden duplicate (templates, closed panels).
+            for (Locator candidate : located.all()) {
+                if (candidate.isVisible()) {
+                    return true;
+                }
             }
             if (waitQuietly(located.first(), WaitForSelectorState.VISIBLE, 1000)) {
                 return true;
@@ -317,7 +320,8 @@ public class FurlencoCartDrawer extends BasePage {
     // labels/scope weren't disambiguated from other page checkboxes like the WhatsApp opt-in) —
     // toggleFirstVasOption() is a best-effort action on whatever the first VAS-panel checkbox is;
     // re-verify before relying on it to target a specific item.
-    private static final String VAS_SECTION_HEADING = ":text(\"Value added services\")";
+    private static final String VAS_SECTION_HEADING =
+            ":text(\"Value added services\"), :text(\"Furlenco Care\")";
     private static final String VAS_APPLIED_COUNT_TEXT = ":text-matches(\"Applied to \\\\d+ Items?\")";
     private static final String VAS_EDIT_TRIGGER = ":text(\"EDIT\")";
     private static final String VAS_PANEL_HEADING = ":text(\"Value Added Services\")";

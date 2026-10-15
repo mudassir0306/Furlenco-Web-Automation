@@ -133,6 +133,11 @@ public class FurlencoPlpPage extends BasePage {
      * {@code page.navigate()} looked for the next card on the product page and timed out (30s)
      * whenever product 0 was unusable. Callers navigate through the returned list themselves.
      */
+    /** The home page also carries /products/ links in its carousels, so require the listing route too. */
+    private static boolean isListingUrl(String url) {
+        return url.contains("/listing") || url.contains("collectionType");
+    }
+
     @Step("Collect candidate product URLs from the PLP (max {max})")
     public java.util.List<String> getCandidateProductUrls(int max) {
         // Wait for REAL product links, not just any card: the broad PRODUCT_CARDS selector also matches
@@ -141,7 +146,7 @@ public class FurlencoPlpPage extends BasePage {
         String productLinks = "a[href*='/product/'], a[href*='/products/'], a[href*='/package/']";
         try {
             WaitUtils.pollUntil("product links present on the PLP",
-                    () -> page.locator(productLinks).count() > 0,
+                    () -> isListingUrl(page.url()) && page.locator(productLinks).count() > 0,
                     java.time.Duration.ofSeconds(60), java.time.Duration.ofMillis(300));
         } catch (IllegalStateException e) {
             LOGGER.warn("No /product(s)/ links appeared within 60s; falling back to the broad card selector");
