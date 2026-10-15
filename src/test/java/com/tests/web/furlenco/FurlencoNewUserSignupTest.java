@@ -59,6 +59,29 @@ public class FurlencoNewUserSignupTest extends BaseWebTest {
         return loginPage.getNewUserSignupPage();
     }
 
+    /**
+     * An email that is guaranteed to be registered: uses {@code test.new.user.registered.email} when it
+     * is configured, otherwise registers a brand-new account with a random email (fresh number + signup),
+     * then clears the session so the caller can start another signup with that email. This keeps the
+     * test self-contained: no real customer email has to sit in config or the repo.
+     */
+    private String obtainRegisteredEmail() {
+        String configured = config.get("test.new.user.registered.email", "");
+        if (configured != null && !configured.isBlank()) {
+            return configured;
+        }
+        String email = RandomDataUtils.randomEmail();
+        homePage.open(furlencoUrl);
+        FurlencoLoginPage loginPage = homePage.openLogin();
+        loginPage.loginWithOtp(RandomDataUtils.randomIndianMobileNumber(), LoginDefaults.otp());
+        loginPage.getNewUserSignupPage().enterName(RandomDataUtils.randomName()).enterEmail(email).clickContinue();
+        assertThat(loginPage.waitUntilLoggedIn()).as("Setup signup should complete for the new account").isTrue();
+        // Start over as a logged-out visitor.
+        page.context().clearCookies();
+        page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }");
+        return email;
+    }
+
     @TmsLink("TC-460")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
     @Severity(SeverityLevel.CRITICAL)
@@ -107,17 +130,18 @@ public class FurlencoNewUserSignupTest extends BaseWebTest {
     @Severity(SeverityLevel.CRITICAL)
     @Description("Verify entering an already-registered email on new-user signup shows the duplicate-email dialog with both options")
     public void verifyAlreadyRegisteredEmailShowsContinueOrSkipOptions() {
+        String registeredEmail = obtainRegisteredEmail();
         homePage.open(furlencoUrl);
         FurlencoNewUserSignupPage signupPage = loginWithFreshNumber();
         assertThat(signupPage.isLoaded()).as("Signup screen should be displayed first").isTrue();
 
         signupPage.enterName(RandomDataUtils.randomName())
-                .enterEmail(config.get("test.new.user.registered.email"))
+                .enterEmail(registeredEmail)
                 .clickContinue();
 
         if (!signupPage.isAlreadyRegisteredDialogDisplayed()) {
             throw new org.testng.SkipException(
-                    "'" + config.get("test.new.user.registered.email") + "' did not trigger the "
+                    "The registered email did not trigger the "
                             + "duplicate-email dialog on this run — it may no longer be registered "
                             + "in this environment's current dataset (the assumption behind "
                             + "test.new.user.registered.email needs a fresh confirmed-registered "
@@ -129,27 +153,41 @@ public class FurlencoNewUserSignupTest extends BaseWebTest {
     @Severity(SeverityLevel.NORMAL)
     @Description("Verify 'Skip and Create a New Account' on the duplicate-email dialog lets signup proceed with a fresh email")
     public void verifySkipAndCreateNewAccountProceedsWithFreshEmail() {
+        String registeredEmail = obtainRegisteredEmail();
         homePage.open(furlencoUrl);
         FurlencoNewUserSignupPage signupPage = loginWithFreshNumber();
         assertThat(signupPage.isLoaded()).as("Signup screen should be displayed first").isTrue();
 
         signupPage.enterName(RandomDataUtils.randomName())
-                .enterEmail(config.get("test.new.user.registered.email"))
+                .enterEmail(registeredEmail)
                 .clickContinue();
         if (!signupPage.isAlreadyRegisteredDialogDisplayed()) {
             throw new org.testng.SkipException(
-                    "'" + config.get("test.new.user.registered.email") + "' did not trigger the "
+                    "The registered email did not trigger the "
                             + "duplicate-email dialog on this run — see "
                             + "verifyAlreadyRegisteredEmailShowsContinueOrSkipOptions for the same "
                             + "caveat. Nothing to Skip past here.");
         }
 
-        signupPage.clickSkipAndCreateNewAccount()
+        signupPage.clickSkipAndCreateNewAccount();
+        FurlencoLoginPage loginPage = new FurlencoLoginPage(page);
+        // Current staging behaviour: Skip returns to the mobile-number step (earlier builds kept the
+        // signup form open). Handle both so the test follows whichever the build does.
+        com.framework.utils.WaitUtils.pollUntil("signup form or mobile-number step after Skip",
+                () -> signupPage.isLoaded() || loginPage.isOpen(),
+                java.time.Duration.ofSeconds(15), java.time.Duration.ofMillis(200));
+        FurlencoNewUserSignupPage activeSignup = signupPage;
+        if (!signupPage.isLoaded()) {
+            loginPage.loginWithOtp(RandomDataUtils.randomIndianMobileNumber(), LoginDefaults.otp());
+            activeSignup = loginPage.getNewUserSignupPage();
+        }
+        activeSignup.enterName(RandomDataUtils.randomName())
                 .enterEmail(RandomDataUtils.randomEmail())
                 .clickContinue();
 
-        assertThat(signupPage.isAlreadyRegisteredDialogDisplayed())
+        assertThat(activeSignup.isAlreadyRegisteredDialogDisplayed())
                 .as("A genuinely fresh email should not trigger the duplicate-email dialog again")
                 .isFalse();
+        assertThat(loginPage.waitUntilLoggedIn()).as("Signup with the fresh email should complete").isTrue();
     }
 }
