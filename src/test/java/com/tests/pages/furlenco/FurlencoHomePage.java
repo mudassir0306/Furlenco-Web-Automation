@@ -36,7 +36,9 @@ public class FurlencoHomePage extends BasePage {
     private static final String CITIES_DELIVER_SECTION = "text=CITIES WE DELIVER TO";
     // Category cards are plain divs with an onClick handler (not <a> tags) — text-match the card's
     // label directly, verified against a live session.
-    private static final String HOME_CATEGORY_CARD_LABEL = "p.text-center:text-is('%s')";
+    // ">> visible=true": the home page keeps hidden copies of these labels (closed mega-menu / inactive
+    // vertical tab panels), and .first() on the plain selector picked a hidden one that never became visible.
+    private static final String HOME_CATEGORY_CARD_LABEL = "p.text-center:text-is('%s') >> visible=true";
     private static final String ACCOUNT_HOVER_CARD_CONTENT = "[data-slot='hover-card-content']";
     private static final String ACCOUNT_HOVER_CARD_LOGIN = "[data-slot='hover-card-content'] p:has-text('Login')";
 
@@ -260,9 +262,21 @@ public class FurlencoHomePage extends BasePage {
         // and intercept the click — verified against a live session.
         page.mouse().move(0, 0);
         Locator category = page.locator(String.format(HOME_CATEGORY_CARD_LABEL, categoryName)).first();
-        category.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        category.scrollIntoViewIfNeeded();
-        category.click(new Locator.ClickOptions().setForce(true));
+        boolean tileFound = waitQuietly(category, WaitForSelectorState.VISIBLE, 15_000);
+        if (tileFound) {
+            category.scrollIntoViewIfNeeded();
+            category.click(new Locator.ClickOptions().setForce(true));
+        } else {
+            // Layout variant without text tiles (seen on staging 2026-10-15: the Unlmtd page shows
+            // image banners wrapped in <a href="/unlmtd/bedroom-unlmtd?...">). Navigate to the
+            // category's own link instead, found by its slug.
+            String slug = categoryName.trim().toLowerCase().replace(' ', '-');
+            Locator link = page.locator(String.format("a[href*='%s' i]", slug)).first();
+            link.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.ATTACHED).setTimeout(30_000));
+            String href = link.getAttribute("href");
+            LOGGER.info("Category tile '{}' not visible; navigating to its link instead", categoryName);
+            page.navigate((String) page.evaluate("h => new URL(h, location.href).href", href));
+        }
         page.waitForLoadState();
         return new FurlencoPlpPage(page);
     }
