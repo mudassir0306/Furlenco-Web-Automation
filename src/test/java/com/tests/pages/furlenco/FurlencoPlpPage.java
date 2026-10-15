@@ -1,6 +1,7 @@
 package com.tests.pages.furlenco;
 
 import com.framework.base.BasePage;
+import com.framework.utils.WaitUtils;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
@@ -99,11 +100,54 @@ public class FurlencoPlpPage extends BasePage {
      */
     @Step("Click first available (purchasable) product card on PLP")
     public FurlencoProductPage clickFirstAvailableProduct(int maxAttempts) {
-        // Collect every candidate URL from the PLP BEFORE navigating anywhere: a lazy Locator keeps
-        // re-resolving against whatever page is current, so reusing it after page.navigate() looked
-        // for the next card on the product page and timed out (30s) whenever product 0 was disabled.
-        page.locator(PRODUCT_CARDS).first().waitFor(new Locator.WaitForOptions()
-                .setState(WaitForSelectorState.VISIBLE).setTimeout(60_000));
+        java.util.List<String> candidates = getCandidateProductUrls(maxAttempts);
+        int count = candidates.size();
+        for (int i = 0; i < count; i++) {
+            String href = candidates.get(i);
+            LOGGER.info("Trying product URL (index {}): {}", i, href);
+            FurlencoProductPage productPage = openProduct(href);
+            if (productPage.isAddToCartButtonEnabled()) {
+                return productPage;
+            }
+            LOGGER.info("Product at index {} has Add to Cart disabled, trying next", i);
+        }
+        throw new IllegalStateException(
+                "No purchasable product (enabled Add to Cart) found in the first " + maxAttempts + " cards on this PLP.");
+    }
+
+
+    /**
+     * Opens a product page by URL. Waits for DOMContentLoaded (not the full {@code load} event, which
+     * third-party scripts can delay past 30s on staging); callers wait for the Add to Cart button anyway.
+     */
+    @Step("Open product page by URL")
+    public FurlencoProductPage openProduct(String url) {
+        page.navigate(url, new Page.NavigateOptions()
+                .setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED)
+                .setTimeout(90_000));
+        return new FurlencoProductPage(page);
+    }
+    /**
+     * Collects up to {@code max} candidate product URLs from the PLP BEFORE navigating anywhere: a
+     * lazy Locator keeps re-resolving against whatever page is current, so reusing it after
+     * {@code page.navigate()} looked for the next card on the product page and timed out (30s)
+     * whenever product 0 was unusable. Callers navigate through the returned list themselves.
+     */
+    @Step("Collect candidate product URLs from the PLP (max {max})")
+    public java.util.List<String> getCandidateProductUrls(int max) {
+        // Wait for REAL product links, not just any card: the broad PRODUCT_CARDS selector also matches
+        // banners on the page we came from, so waiting on it returned before the client-side route to
+        // the listing had happened and the hrefs were collected from an empty/loading page (0 candidates).
+        String productLinks = "a[href*='/product/'], a[href*='/products/'], a[href*='/package/']";
+        try {
+            WaitUtils.pollUntil("product links present on the PLP",
+                    () -> page.locator(productLinks).count() > 0,
+                    java.time.Duration.ofSeconds(60), java.time.Duration.ofMillis(300));
+        } catch (IllegalStateException e) {
+            LOGGER.warn("No /product(s)/ links appeared within 60s; falling back to the broad card selector");
+            page.locator(PRODUCT_CARDS).first().waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(30_000));
+        }
         settle(1500); // let the listing finish rendering/lazy-loading more cards
         @SuppressWarnings("unchecked")
         java.util.List<Object> rawHrefs = (java.util.List<Object>) page.locator(PRODUCT_CARDS)
@@ -123,20 +167,8 @@ public class FurlencoPlpPage extends BasePage {
             }
         }
         java.util.List<String> candidates = new java.util.ArrayList<>(productHrefs.isEmpty() ? otherHrefs : productHrefs);
-        int count = Math.min(maxAttempts, candidates.size());
-        LOGGER.info("PLP offered {} candidate product URLs, trying up to {}", candidates.size(), count);
-        for (int i = 0; i < count; i++) {
-            String href = candidates.get(i);
-            LOGGER.info("Trying product URL (index {}): {}", i, href);
-            page.navigate(href);
-            page.waitForLoadState();
-            FurlencoProductPage productPage = new FurlencoProductPage(page);
-            if (productPage.isAddToCartButtonEnabled()) {
-                return productPage;
-            }
-            LOGGER.info("Product at index {} has Add to Cart disabled, trying next", i);
-        }
-        throw new IllegalStateException(
-                "No purchasable product (enabled Add to Cart) found in the first " + maxAttempts + " cards on this PLP.");
+        int count = Math.min(max, candidates.size());
+        LOGGER.info("PLP offered {} candidate product URLs, using up to {}", candidates.size(), count);
+        return new java.util.ArrayList<>(candidates.subList(0, count));
     }
 }
