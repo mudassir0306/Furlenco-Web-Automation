@@ -252,7 +252,10 @@ Keys set only in some env files:
 
 ## CI
 
-`.github/workflows/tests.yml` runs on push to `main`, pull requests and manual dispatch (inputs: `groups`, `runner`, `browser`). It first checks that the generated docs are current, then runs the tests (default group `furlenco`) and uploads Allure results and failure artifacts. The tests need staging VPN access, so use a self-hosted runner on the VPN for real runs.
+`.github/workflows/tests.yml` has two jobs:
+
+- **`checks`** runs on every push to `main` and every pull request, on a GitHub-hosted runner: generated-docs freshness (`--check` for both generators), `mvn test-compile`, and a leak scan for phone-number-like values. It needs no access to staging.
+- **`e2e`** (the browser tests) runs **only on manual dispatch** (inputs: `groups` default `smoke`, `runner` default `self-hosted`, `browser`, `run_e2e`) and needs a self-hosted runner on the staging VPN. `stag.furlenco.com` resolves to a private address, so on a GitHub-hosted runner it returns a Cloudflare "Error 1002: DNS points to local or disallowed IP" page and every test times out; the connectivity pre-check (`EnvironmentCheck`) also stops such a run immediately with a clear message. Seed accounts can be supplied as repository secrets (`SEED_HISTORY_RENTBUY`, `SEED_HISTORY_RENT`, `SEED_ADDRESS`, `SEED_CANCEL_BUY`, `SEED_CANCEL_UNLIMITED`).
 
 ## Traceability
 

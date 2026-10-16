@@ -77,11 +77,18 @@ public final class EnvironmentCheck {
                     .connectTimeout(HTTP_TIMEOUT)
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
-            HttpResponse<Void> response = client.send(
+            HttpResponse<String> response = client.send(
                     HttpRequest.newBuilder(URI.create(baseUrl)).timeout(HTTP_TIMEOUT).GET().build(),
-                    HttpResponse.BodyHandlers.discarding());
-            // Any HTTP answer means the network path works; only server errors on the root page are a problem.
-            return response.statusCode() >= 500 ? "HTTP " + response.statusCode() : null;
+                    HttpResponse.BodyHandlers.ofString());
+            String body = response.body() == null ? "" : response.body();
+            // stag.furlenco.com resolves to a private address. Off the VPN (e.g. a GitHub-hosted runner) Cloudflare
+            // answers with an HTML error page ("Error 1002: DNS points to local or disallowed IP"), so a plain
+            // "did we get an HTTP answer" test would wrongly pass. Recognise that page explicitly.
+            if (body.contains("DNS points to local or disallowed IP") || body.contains("Error 1002")) {
+                return "Cloudflare Error 1002 (the host is private: you are not on the VPN / network)";
+            }
+            // A healthy site root answers 2xx/3xx; 4xx/5xx on the root means the environment is not usable.
+            return response.statusCode() >= 400 ? "HTTP " + response.statusCode() : null;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return "interrupted";
