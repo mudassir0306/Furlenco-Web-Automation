@@ -265,12 +265,26 @@ public class FurlencoLoginPage extends BasePage {
      * under the seed's label with a masked phone.
      */
     @Step("Login with seed account {seed}")
+    /**
+     * Logs in with a seed account and empties its cart. Seeded accounts keep their cart between runs, so
+     * flows that add products and check out must start from an empty one (stale items and "Stock limit
+     * reached!" lines block Proceed).
+     */
+    public LoginTestData loginWithSeedAndEmptyCart(SeedUsers.SeedUser seed) {
+        LoginTestData data = loginWithSeed(seed);
+        if (data.succeeded()) {
+            new FurlencoCartDrawer(page).clearCart();
+        }
+        return data;
+    }
+
     public LoginTestData loginWithSeed(SeedUsers.SeedUser seed) {
         String otp = LoginDefaults.otp();
         String outcome;
         try {
             loginWithOtp(seed.phone(), otp);
             outcome = isLoggedIn() ? LoginTestData.LOGGED_IN : LoginTestData.FAILED;
+
         } catch (RuntimeException e) {
             LoginDataRecorder.record(LoginDataRecorder.newRecord(LoginTestData.Kind.EXISTING, seed.label(),
                     seed.phone(), otp, "", "", LoginTestData.FAILED, lastOtpWaitMs, lastSubmitWaitMs));

@@ -44,7 +44,12 @@ public class FurlencoProfileAndOrdersTest extends BaseWebTest {
 
     /** Seed account with Rent + Buy order history (read-only); skips when no seed pool is configured. */
     private void login() {
-        SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.HISTORY_RENTBUY);
+        login(SeedUsers.Pool.HISTORY_RENTBUY);
+    }
+
+    /** Logs in with a seed account from the given history pool (skips the test if the pool is not configured). */
+    private void login(SeedUsers.Pool pool) {
+        SeedUsers.SeedUser seed = SeedUsers.require(pool);
         FurlencoLoginPage loginPage = homePage.openLogin();
         assertThat(loginPage.isOpen()).as("Login dialog should open from the Account menu").isTrue();
         LoginTestData login = loginPage.loginWithSeed(seed);
@@ -98,16 +103,27 @@ public class FurlencoProfileAndOrdersTest extends BaseWebTest {
 
     @Test(groups = {"regression", "web", "furlenco"}, priority = 4)
     @Severity(SeverityLevel.NORMAL)
-    @Description("Verify order detail opens from My Orders for a Rent and a Buy order")
-    public void verifyOrderDetailsOpen() {
+    @Description("Verify order detail opens from My Orders for a Rent order")
+    public void verifyRentOrderDetailsOpen() {
         homePage.open(furlencoUrl);
-        login();
+        // A Rent order is only guaranteed on the accounts with fulfilled Rent history; a single account
+        // rarely shows both a Rent and a Buy order in the visible list, so Rent and Buy use separate pools.
+        login(SeedUsers.Pool.HISTORY_RENT);
 
         FurlencoMyOrdersPage myOrders = new FurlencoMyOrdersPage(page).open(furlencoUrl);
         myOrders.openFirstRentOrder();
         assertThat(myOrders.isOrderDetailLoaded()).as("Rent order detail should load").isTrue();
+    }
 
-        myOrders.open(furlencoUrl).openFirstBuyOrder();
+    @Test(groups = {"regression", "web", "furlenco"}, priority = 5)
+    @Severity(SeverityLevel.NORMAL)
+    @Description("Verify order detail opens from My Orders for a Buy order")
+    public void verifyBuyOrderDetailsOpen() {
+        homePage.open(furlencoUrl);
+        login(SeedUsers.Pool.HISTORY_RENTBUY);
+
+        FurlencoMyOrdersPage myOrders = new FurlencoMyOrdersPage(page).open(furlencoUrl);
+        myOrders.openFirstBuyOrder();
         assertThat(myOrders.isOrderDetailLoaded()).as("Buy order detail should load").isTrue();
     }
 

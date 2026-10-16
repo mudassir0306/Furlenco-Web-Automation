@@ -1,6 +1,7 @@
 package com.tests.pages.furlenco;
 
 import com.framework.base.BasePage;
+import com.framework.utils.WaitUtils;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
@@ -35,7 +36,10 @@ public class FurlencoCartDrawer extends BasePage {
             "button:has-text('CHECKOUT'), button:has-text('Pay ₹'), button:has-text('Proceed')";
     // Verified live: a "Rental Terms Reminder" dialog with a PROCEED button (Rent only, minimum
     // tenure disclosure) — not literally worded "tenure", so match on the dialog's own PROCEED CTA.
-    private static final String MIN_TENURE_DIALOG = "[data-slot='dialog-content']:has-text('Rental Terms')";
+    // The Rental Terms dialog is not always a Radix dialog-content (the older cart layout uses a different
+    // dialog component, seen 2026-10-16), so match it by its heading text as well.
+    private static final String MIN_TENURE_DIALOG =
+            "[data-slot='dialog-content']:has-text('Rental Terms'), [role='dialog']:has-text('Rental Terms'), :text(\"Rental Terms Reminder\")";
     private static final String MIN_TENURE_CONFIRM_BUTTON =
             "[data-slot='dialog-content'] button:has-text('PROCEED'), [data-slot='dialog-content'] button:has-text('Continue')";
 
@@ -75,16 +79,24 @@ public class FurlencoCartDrawer extends BasePage {
 
     @Step("Check if a minimum-tenure confirmation popup is shown (Rent checkout)")
     public boolean isMinTenurePopupDisplayed() {
-        Locator dialog = page.locator(MIN_TENURE_DIALOG);
-        return dialog.count() > 0 && dialog.first().isVisible();
+        for (Locator dialog : page.locator(MIN_TENURE_DIALOG).all()) {
+            if (dialog.isVisible()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Step("Confirm the minimum-tenure popup if present")
     public FurlencoCartDrawer confirmMinTenurePopupIfPresent() {
         if (isMinTenurePopupDisplayed()) {
             LOGGER.info("Min tenure popup displayed, confirming");
-            page.locator(MIN_TENURE_CONFIRM_BUTTON).first().click();
-            waitQuietly(page.locator(MIN_TENURE_DIALOG).first(), WaitForSelectorState.HIDDEN, 2000);
+            // Prefer a PROCEED button inside a dialog; otherwise the LAST PROCEED button on the page (the dialog is
+            // appended after the cart's own Proceed button).
+            Locator inDialog = page.locator(MIN_TENURE_CONFIRM_BUTTON).first();
+            Locator button = inDialog.count() > 0 ? inDialog : page.locator("button:has-text('PROCEED')").last();
+            button.click();
+            waitQuietly(page.locator(":text(\"Rental Terms Reminder\")").first(), WaitForSelectorState.HIDDEN, 15_000);
         }
         return this;
     }
@@ -98,10 +110,19 @@ public class FurlencoCartDrawer extends BasePage {
     @Step("Click Checkout to proceed to Delivery Address")
     public FurlencoCheckoutAddressPage clickCheckout() {
         LOGGER.info("Clicking Checkout");
-        Locator checkoutBtn = page.locator(CHECKOUT_BUTTON).first();
-        checkoutBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        // First VISIBLE match: the page keeps hidden duplicates of Checkout/Proceed that .first() would pick.
+        Locator checkoutBtn = waitForFirstVisible(CHECKOUT_BUTTON, 45_000);
         checkoutBtn.click();
-        waitQuietly(page.locator(MIN_TENURE_DIALOG).first(), WaitForSelectorState.VISIBLE, 800);
+        // Either the Rent "Rental Terms Reminder" dialog appears (can take several seconds on staging) or the
+        // checkout address step opens directly (Buy / no monthly-plan items) — wait for whichever comes first.
+        try {
+            WaitUtils.pollUntil("Rental Terms dialog or checkout address step",
+                    () -> currentUrl().contains("/checkout/address")
+                            || (page.locator(MIN_TENURE_DIALOG).count() > 0 && page.locator(MIN_TENURE_DIALOG).first().isVisible()),
+                    java.time.Duration.ofSeconds(25), java.time.Duration.ofMillis(200));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Neither the Rental Terms dialog nor the address step appeared within 25s: {}", e.getMessage());
+        }
         confirmMinTenurePopupIfPresent();
         page.waitForLoadState();
         return new FurlencoCheckoutAddressPage(page);
@@ -134,7 +155,13 @@ public class FurlencoCartDrawer extends BasePage {
     // real cart items have a delete button.
     private static final String RENT_SECTION_HEADING = ":text(\"Rent Cart\")";
     private static final String BUY_SECTION_HEADING = ":text(\"Buy Cart\")";
-    private static final String ITEM_DELETE_BUTTON = "button.cart-item-delete-button";
+    // 2026-10-15 cart page: accessible labels ("Remove item", "Increase/Decrease quantity"); the older MUI
+    // class-based selectors are kept as fallbacks for builds that still use them.
+    private static final String ITEM_DELETE_BUTTON = "button[aria-label='Remove item'], button.cart-item-delete-button";
+    private static final String INCREASE_QTY_BUTTON = "button[aria-label='Increase quantity']";
+    // The quantity widget is [ left ][ <span>N</span> ][ Increase quantity ]; the left button is labelled
+    // "Remove item" at N=1 and a decrease control at N>=2, so only the Increase button is a stable per-item anchor.
+    private static final String ITEM_ANCHOR = "button[aria-label='Increase quantity'], button.cart-item-delete-button";
     private static final String ITEM_NAME_TEXT = "p.MuiTypography-P_Medium";
     private static final String ITEM_QUANTITY_TEXT = "p.MuiTypography-body1";
     private static final String ITEM_QUANTITY_BUTTON = "button.MuiIconButton-root:not(.cart-item-delete-button)";
@@ -175,23 +202,44 @@ public class FurlencoCartDrawer extends BasePage {
 
     @Step("Get total number of items across all cart sections")
     public int getItemCount() {
-        return page.locator(ITEM_DELETE_BUTTON).count();
+        return page.locator(ITEM_ANCHOR).count();
     }
 
     private Locator itemCard(int index) {
-        return page.locator(ITEM_DELETE_BUTTON).nth(index)
-                .locator("xpath=ancestor::div[.//p[contains(@class,'MuiTypography-P_Medium')]][1]");
+        // Cart items load asynchronously (after a reload the cart first renders empty), so wait for the first
+        // item before resolving a card instead of letting the first action hit the 30s default timeout.
+        waitQuietly(page.locator(ITEM_ANCHOR).first(), WaitForSelectorState.VISIBLE, 45_000);
+        // Nearest ancestor of the item's anchor that also holds its price (new UI) or its name text (old MUI UI).
+        return page.locator(ITEM_ANCHOR).nth(index)
+                .locator("xpath=ancestor::div[.//p[contains(@class,'MuiTypography-P_Medium')] or contains(.,'₹')][1]");
     }
 
     @Step("Get item name at index {index}")
     public String getItemName(int index) {
-        return itemCard(index).locator(ITEM_NAME_TEXT).first().textContent().trim();
+        Locator oldName = itemCard(index).locator(ITEM_NAME_TEXT);
+        if (oldName.count() > 0) {
+            return oldName.first().textContent().trim();
+        }
+        // New UI: the name is the first plain text line of the card (before the discount/price/stock lines).
+        for (String line : itemCard(index).innerText().split("\\R")) {
+            String t = line.trim();
+            if (!t.isEmpty() && !t.contains("₹") && !t.contains("OFF") && !t.toLowerCase().contains("left in stock")
+                    && !t.matches("\\d+")) {
+                return t;
+            }
+        }
+        return "";
     }
 
     @Step("Get item quantity at index {index}")
     public int getItemQuantity(int index) {
-        String text = itemCard(index).locator(ITEM_QUANTITY_TEXT).first().textContent().trim();
-        return Integer.parseInt(text.replaceAll("[^0-9]", ""));
+        Locator oldText = itemCard(index).locator(ITEM_QUANTITY_TEXT);
+        if (oldText.count() > 0) {
+            return Integer.parseInt(oldText.first().textContent().trim().replaceAll("[^0-9]", ""));
+        }
+        // New UI: the quantity is the <span> right before the Increase button.
+        String qty = page.locator(INCREASE_QTY_BUTTON).nth(index).locator("xpath=preceding-sibling::span[1]").innerText();
+        return Integer.parseInt(qty.replaceAll("[^0-9]", ""));
     }
 
     @Step("Get original (pre-discount) price text for item at index {index}")
@@ -220,25 +268,96 @@ public class FurlencoCartDrawer extends BasePage {
     @Step("Increase quantity for item at index {index}")
     public FurlencoCartDrawer increaseQuantity(int index) {
         LOGGER.info("Increasing quantity for cart item at index {}", index);
-        itemCard(index).locator(ITEM_QUANTITY_BUTTON).nth(1).click();
-        settle(800); // TODO(verify on staging): wait for quantity text change instead
+        int before = getItemQuantity(index);
+        Locator plus = page.locator(INCREASE_QTY_BUTTON);
+        (plus.count() > 0 ? plus.nth(index) : itemCard(index).locator(ITEM_QUANTITY_BUTTON).nth(1)).click();
+        waitForQuantityChange(index, before);
         return this;
+    }
+
+    @Step("Check if quantity can be increased for item at index {index}")
+    public boolean isQuantityIncreasable(int index) {
+        // Stock-limited items ("Only 1 left in stock") render the + button disabled.
+        waitQuietly(page.locator(INCREASE_QTY_BUTTON).first(), WaitForSelectorState.VISIBLE, 45_000);
+        Locator plus = page.locator(INCREASE_QTY_BUTTON).nth(index);
+        return plus.count() > 0 && plus.isVisible() && plus.isEnabled();
+    }
+
+    private void waitForQuantityChange(int index, int before) {
+        try {
+            WaitUtils.pollUntil("quantity to change from " + before, () -> getItemQuantity(index) != before,
+                    java.time.Duration.ofSeconds(15), java.time.Duration.ofMillis(200));
+        } catch (IllegalStateException | NumberFormatException e) {
+            LOGGER.debug("Quantity did not change within 15s: {}", e.getMessage());
+        }
     }
 
     @Step("Decrease quantity for item at index {index}")
     public FurlencoCartDrawer decreaseQuantity(int index) {
         LOGGER.info("Decreasing quantity for cart item at index {}", index);
-        itemCard(index).locator(ITEM_QUANTITY_BUTTON).nth(0).click();
-        settle(800); // TODO(verify on staging): wait for quantity text change instead
+        int before = getItemQuantity(index);
+        Locator plus = page.locator(INCREASE_QTY_BUTTON);
+        // The control left of the number: a decrease button at N>=2 (at N=1 it is "Remove item", i.e. a removal).
+        (plus.count() > 0 ? plus.nth(index).locator("xpath=preceding-sibling::button[1]")
+                : itemCard(index).locator(ITEM_QUANTITY_BUTTON).nth(0)).click();
+        waitForQuantityChange(index, before);
         return this;
     }
 
     @Step("Remove item at index {index}")
     public FurlencoCartDrawer removeItem(int index) {
         LOGGER.info("Removing cart item at index {}", index);
-        page.locator(ITEM_DELETE_BUTTON).nth(index).click();
-        settle(800); // TODO(verify on staging): wait for item count / totals refresh instead
+        int before = getItemCount();
+        Locator plus = page.locator(INCREASE_QTY_BUTTON);
+        if (plus.count() > 0) {
+            // Bring the quantity down to 1: only then is the left button "Remove item".
+            for (int guard = 0; guard < 20 && getItemQuantity(index) > 1; guard++) {
+                decreaseQuantity(index);
+            }
+            plus.nth(index).locator("xpath=preceding-sibling::button[1]").click();
+        } else {
+            page.locator(ITEM_DELETE_BUTTON).nth(index).click();
+        }
+        // The new cart asks "Are you sure you want to remove this product from the cart?" with a REMOVE IT button.
+        Locator confirm = page.locator("button:has-text('REMOVE IT'), button:has-text('Remove it')").first();
+        if (waitQuietly(confirm, WaitForSelectorState.VISIBLE, 5_000)) {
+            confirm.click();
+        }
+        try {
+            WaitUtils.pollUntil("item count to drop after removal", () -> getItemCount() < before,
+                    java.time.Duration.ofSeconds(15), java.time.Duration.ofMillis(200));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Item count did not change within 15s of removal: {}", e.getMessage());
+        }
         return this;
+    }
+
+    /**
+     * Empties the cart. Seeded accounts keep their cart between runs, so earlier runs leave many items (and
+     * "Stock limit reached!" lines that block Proceed). Navigates to /cart, removes items until none are left
+     * (bounded), then returns to the page the caller was on.
+     */
+    @Step("Empty the cart")
+    public FurlencoCartDrawer clearCart() {
+        String returnUrl = page.url();
+        page.navigate(java.net.URI.create(returnUrl).resolve("/cart").toString());
+        waitQuietly(page.locator(":text(\"Your Cart\"), :text(\"Rent Cart\"), :text(\"Buy Cart\"), #empty-cart, :text(\"Cart Looks A little Empty\")").first(),
+                WaitForSelectorState.VISIBLE, 45_000);
+        int removed = 0;
+        for (int guard = 0; guard < 40 && getItemCountNow() > 0; guard++) {
+            removeItem(0);
+            removed++;
+        }
+        LOGGER.info("Cart cleared: {} item(s) removed", removed);
+        if (!returnUrl.contains("/cart")) {
+            page.navigate(returnUrl);
+        }
+        return this;
+    }
+
+    /** Item count without waiting for items to appear (an empty cart is a valid answer here). */
+    private int getItemCountNow() {
+        return page.locator(ITEM_ANCHOR).count();
     }
 
     // ---- Rental tenure / payment plan selection (CART-03) ----

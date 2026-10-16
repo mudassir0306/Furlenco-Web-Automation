@@ -230,8 +230,15 @@ public class FurlencoHomePage extends BasePage {
     public FurlencoCartDrawer openCart() {
         LOGGER.info("Clicking Cart button");
         dismissLocationModalIfOpen();
+        Locator cartContent = page.locator(":text(\"Cost Breakup\"), :text(\"Your Cart\"), button:has-text('CHECKOUT'), #empty-cart, :text(\"Rent Cart\")").first();
         page.locator(CART_BUTTON).first().click(new Locator.ClickOptions().setForce(true));
-        waitQuietly(page.locator(":text(\"Cost Breakup\"), button:has-text('CHECKOUT'), #empty-cart, :text(\"Rent Cart\")").first(), WaitForSelectorState.VISIBLE, 3000);
+        if (!waitQuietly(cartContent, WaitForSelectorState.VISIBLE, 8_000)) {
+            // The header icon click doesn't always open the cart (overlays, hover cards). The cart is a plain
+            // page at /cart (verified 2026-10-15), so go there directly.
+            LOGGER.info("Cart did not open from the header icon; navigating to /cart");
+            page.navigate(java.net.URI.create(page.url()).resolve("/cart").toString());
+            waitQuietly(cartContent, WaitForSelectorState.VISIBLE, 30_000);
+        }
         return new FurlencoCartDrawer(page);
     }
 
@@ -240,7 +247,14 @@ public class FurlencoHomePage extends BasePage {
         LOGGER.info("Clicking Wishlist button");
         dismissLocationModalIfOpen();
         page.locator(WISHLIST_BUTTON).first().click(new Locator.ClickOptions().setForce(true));
-        settle(500); // TODO(verify on staging): wishlist click outcome (page vs login dialog) not observable here
+        // The outcome is either the wishlist page (logged in) or the login dialog (logged out).
+        try {
+            WaitUtils.pollUntil("wishlist page or login dialog",
+                    () -> currentUrl().contains("wishlist") || page.locator("[role='dialog'] input").first().isVisible(),
+                    Duration.ofSeconds(8), Duration.ofMillis(150));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Wishlist click outcome not observed within 8s: {}", e.getMessage());
+        }
     }
 
     @Step("Check if Help Center link is displayed in footer")

@@ -64,9 +64,33 @@ public class FurlencoProductPage extends BasePage {
     @Step("Click Add to Cart / Rent CTA button")
     public void clickAddToCart() {
         LOGGER.info("Clicking Add to Cart / Rent button");
+        // Unlmtd product pages show a "Select a Plan" drawer (Luxury/Premium/Lite/Basic/Essentials) whose
+        // overlay blocks every click until a plan is chosen (seen via failure page text, 2026-10-15).
+        boolean planChosen = selectPlanIfPrompted();
         Locator btn = page.locator(ADD_TO_CART_BTN).first();
+        if (planChosen && !waitQuietly(btn, WaitForSelectorState.VISIBLE, 5_000)) {
+            return; // choosing the plan already added the item (the CTA became "Go to cart")
+        }
         btn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         btn.click();
+        selectPlanIfPrompted(); // the plan drawer may also open as a result of the click itself
+    }
+
+    /**
+     * If the Unlmtd "Select a Plan" drawer is open, picks the first plan and waits for the drawer to
+     * close. Returns true when a plan was chosen.
+     */
+    @Step("Choose a plan if the Select a Plan drawer is shown")
+    public boolean selectPlanIfPrompted() {
+        Locator heading = page.locator(":text(\"Select a Plan\")").first();
+        if (!waitQuietly(heading, WaitForSelectorState.VISIBLE, 4_000)) {
+            return false;
+        }
+        LOGGER.info("Select a Plan drawer is open; choosing the first plan");
+        Locator select = page.locator("button:has-text('Select')").first();
+        select.click(new Locator.ClickOptions().setTimeout(15_000));
+        waitQuietly(heading, WaitForSelectorState.HIDDEN, 20_000);
+        return true;
     }
 
     /**

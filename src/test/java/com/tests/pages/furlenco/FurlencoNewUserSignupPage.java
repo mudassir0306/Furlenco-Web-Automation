@@ -88,8 +88,15 @@ public class FurlencoNewUserSignupPage extends BasePage {
     public FurlencoNewUserSignupPage clickContinue() {
         LOGGER.info("Clicking Continue on new-user signup");
         page.locator(CONTINUE_BUTTON).first().click();
-        waitQuietly(page.locator(ALREADY_REGISTERED_HEADING + ", " + ALREADY_REGISTERED_MESSAGE).first(), WaitForSelectorState.VISIBLE, 1500);
-        // TODO(verify on staging): returns early only when the already-registered dialog shows; else bounded 1.5s
+        // Outcome is either the already-registered dialog or the signup form going away (account created);
+        // wait for whichever happens first (bounded) instead of a fixed pause.
+        try {
+            com.framework.utils.WaitUtils.pollUntil("duplicate-email dialog shown or signup form closed",
+                    () -> isAlreadyRegisteredDialogDisplayed() || !isLoaded(),
+                    java.time.Duration.ofSeconds(15), java.time.Duration.ofMillis(200));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Signup Continue outcome not observed within 15s: {}", e.getMessage());
+        }
         return this;
     }
 
@@ -105,14 +112,20 @@ public class FurlencoNewUserSignupPage extends BasePage {
     public void clickContinueAsRegisteredEmail() {
         LOGGER.info("Clicking Continue as (registered email)");
         page.locator(CONTINUE_AS_EMAIL_BUTTON).first().click();
-        settle(1500); // TODO(verify on staging): outcome of Continue-as-registered-email not observable here
+        // The duplicate-email dialog closes once the choice is applied.
+        waitQuietly(page.locator(ALREADY_REGISTERED_HEADING + ", " + ALREADY_REGISTERED_MESSAGE).first(),
+                WaitForSelectorState.HIDDEN, 10_000);
     }
 
     @Step("Click 'Skip and Create a New Account' on the already-registered dialog")
     public FurlencoNewUserSignupPage clickSkipAndCreateNewAccount() {
         LOGGER.info("Clicking Skip and Create a New Account");
         page.locator(SKIP_CREATE_NEW_ACCOUNT_LINK).first().click();
-        settle(1000); // TODO(verify on staging): no known element change after Skip and Create a New Account
+        // Observed on staging (2026-10-15): Skip returns to the mobile-number step; older builds kept the
+        // signup form open. Wait for the duplicate dialog to close, then for either of those screens.
+        waitQuietly(page.locator(ALREADY_REGISTERED_HEADING + ", " + ALREADY_REGISTERED_MESSAGE).first(),
+                WaitForSelectorState.HIDDEN, 10_000);
+        waitQuietly(page.locator("input[placeholder*='mobile' i], " + NAME_INPUT).first(), WaitForSelectorState.VISIBLE, 10_000);
         return this;
     }
 
@@ -133,7 +146,11 @@ public class FurlencoNewUserSignupPage extends BasePage {
     }
 
     private String clickLinkAndGetUrl(String selector) {
-        Locator link = page.locator(selector).first();
+        // The signup form is a dialog; the page footer has same-named links hidden underneath its overlay
+        // (first match on the plain selector, so clicking it timed out). Prefer the dialog's own link.
+        Locator inDialog = page.locator("[role='dialog']").locator(selector).first();
+        waitQuietly(inDialog, WaitForSelectorState.VISIBLE, 15_000);
+        Locator link = inDialog.count() > 0 ? inDialog : page.locator(selector).first();
         link.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         String target = link.getAttribute("target");
         if ("_blank".equals(target)) {

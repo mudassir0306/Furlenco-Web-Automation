@@ -42,10 +42,16 @@ public class FurlencoNewAddressPage extends BasePage {
         return currentUrl().contains("/checkout/address/new") && input.isVisible();
     }
 
+    /** The search box is rendered disabled (cursor-not-allowed) until the map/Places finish loading. */
+    private boolean awaitSearchEnabled(Locator input) {
+        return waitUntilVisibleAndEnabled(input, 45_000);
+    }
+
     @Step("Search address: {query}")
     public FurlencoNewAddressPage searchAddress(String query) {
         LOGGER.info("Searching address for [{}]", query);
         Locator input = page.locator(SEARCH_INPUT);
+        awaitSearchEnabled(input);
         input.click();
         input.fill("");
         input.pressSequentially(query);
@@ -61,10 +67,15 @@ public class FurlencoNewAddressPage extends BasePage {
     @Step("Search address {query} and count suggestions")
     public int searchAndCountSuggestions(String query, int waitMs) {
         Locator input = page.locator(SEARCH_INPUT);
+        if (!awaitSearchEnabled(input)) {
+            LOGGER.warn("Address search input stayed disabled: search is unavailable");
+            return 0;
+        }
         input.click();
         input.fill("");
         input.pressSequentially(query);
-        // TODO(verify on staging): suggestions may never appear (blank Google Maps area); bounded by waitMs, no throw
+        // Verified behaviour (2026-10-06, still true 2026-10-15): on staging the Google Maps area is blank and no
+        // suggestions appear, so this waits at most waitMs and returns 0 instead of throwing.
         waitQuietly(page.locator(SUGGESTION).first(), WaitForSelectorState.VISIBLE, waitMs);
         return page.locator(SUGGESTION).count();
     }

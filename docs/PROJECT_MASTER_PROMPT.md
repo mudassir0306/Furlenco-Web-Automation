@@ -50,6 +50,7 @@ src/main/java/com/framework/
     RetryTransformer  - Registered in testng.xml under listeners.
     TestListener  - Registered in testng.xml under listeners.
   utils/
+    EnvironmentCheck  - Fails fast when the target environment is unreachable (typically: staging while the company VPN is down), so a run produces one clear message instead of doze...
     LoginDataRecorder  - Records every login attempt's test data: an Allure attachment + parameters on the current test, and a row in target/test-data/login-attempts.csv.
     LoginTestData  - Immutable record of one login attempt's test data, written to the Allure report and to target/test-data/login-attempts.csv by LoginDataRecorder.
     RandomDataUtils  - Generates random, non-sensitive test data — primarily Indian mobile numbers for flows that need a phone number guaranteed not to already exist in the target...
@@ -110,12 +111,12 @@ Tests:
 | `FurlencoPdpNavigationTest` | 6 | 0 | furlenco, regression, smoke, web |
 | `FurlencoPincodeAvailabilityTest` | 3 | 0 | furlenco, regression, smoke, web |
 | `FurlencoPlpNavigationTest` | 13 | 0 | furlenco, regression, smoke, web |
-| `FurlencoProfileAndOrdersTest` | 4 | 4 | auth-profile, backlog, furlenco, orders-returns, regression, smoke, web |
+| `FurlencoProfileAndOrdersTest` | 5 | 4 | auth-profile, backlog, furlenco, orders-returns, regression, smoke, web |
 | `FurlencoRenewalTest` | 0 | 5 | backlog, furlenco, renewals |
 | `FurlencoSearchAndBrowseTest` | 2 | 0 | furlenco, regression, smoke, web |
 | `FurlencoStockAvailabilityTest` | 2 | 0 | furlenco, regression, smoke, web |
 | `FurlencoSuccessfulOrderTest` | 2 | 0 | furlenco, payment-critical, regression, web |
-| **Total (27 classes)** | **97** | **18** | |
+| **Total (27 classes)** | **98** | **18** | |
 <!-- AUTO:test-classes:END -->
 
 Listeners (`META-INF/services/org.testng.ITestNGListener`): `TestListener` (screenshots, traces, Allure) and `RetryTransformer` (applies `RetryAnalyzer` to every `@Test`). Do not add retry loops in tests.
@@ -201,7 +202,7 @@ Keys set only in some env files:
 | `furlenco.pin.experiments` | preprod, qa |
 | `login.otp.wait.ms` | preprod, qa, staging |
 | `login.submit.wait.ms` | preprod, qa, staging |
-| `test.delivery.pincode` | preprod |
+| `test.delivery.pincode` | preprod, qa, staging |
 | `test.new.user.registered.email` | preprod |
 | `test.payment.*` (14 keys) | preprod |
 | `test.user.otp` | preprod, qa, staging |

@@ -29,6 +29,16 @@ public class FurlencoCheckoutAddressPage extends BasePage {
 
     @Step("Check if the Delivery Address step is loaded")
     public boolean isLoaded() {
+        // The route change after Checkout can lag on staging, so wait (bounded) for either signal instead of
+        // reading the page once.
+        try {
+            com.framework.utils.WaitUtils.pollUntil("checkout address step shown",
+                    () -> currentUrl().contains("/checkout/address")
+                            || (page.locator(ADDRESS_LIST_CONTAINER).count() > 0 && page.locator(ADDRESS_LIST_CONTAINER).first().isVisible()),
+                    java.time.Duration.ofSeconds(45), java.time.Duration.ofMillis(250));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Delivery Address step not seen within 45s: {}", e.getMessage());
+        }
         boolean urlMatches = currentUrl().contains("/checkout/address");
         Locator container = page.locator(ADDRESS_LIST_CONTAINER);
         boolean containerVisible = container.count() > 0 && container.first().isVisible();
@@ -45,8 +55,7 @@ public class FurlencoCheckoutAddressPage extends BasePage {
     /** Saved address cards are buttons whose text includes a 6-digit pincode (verified live 2026-10-05). */
     @Step("Count saved addresses")
     public int getSavedAddressCount() {
-        page.locator(":text(\"Saved Addresses\")").first().waitFor(
-                new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
+        waitForFirstVisible(":text(\"Saved Addresses\")", 30_000);
         return page.locator("button")
                 .filter(new Locator.FilterOptions().setHasText(java.util.regex.Pattern.compile("\\b\\d{6}\\b")))
                 .count();
@@ -74,14 +83,18 @@ public class FurlencoCheckoutAddressPage extends BasePage {
 
     @Step("Click Add New Address")
     public FurlencoNewAddressPage clickAddNewAddress() {
-        page.locator(ADD_NEW_ADDRESS_BUTTON).first().click();
+        waitForFirstVisible(ADD_NEW_ADDRESS_BUTTON, 45_000).click();
         return new FurlencoNewAddressPage(page);
     }
 
     @Step("Check if the Add New Address action is available")
     public boolean isAddNewAddressAvailable() {
-        Locator btn = page.locator(ADD_NEW_ADDRESS_BUTTON);
-        return btn.count() > 0 && btn.first().isVisible();
+        for (Locator btn : page.locator(ADD_NEW_ADDRESS_BUTTON).all()) {
+            if (btn.isVisible()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -92,9 +105,7 @@ public class FurlencoCheckoutAddressPage extends BasePage {
     @Step("Confirm the currently selected delivery address")
     public FurlencoOrderSummaryPage confirmSelectedAddress() {
         LOGGER.info("Confirming selected delivery address");
-        Locator confirmBtn = page.locator(CONFIRM_LOCATION_BUTTON).first();
-        confirmBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        confirmBtn.click();
+        waitForFirstVisible(CONFIRM_LOCATION_BUTTON, 45_000).click();
         page.waitForLoadState();
         waitForUrlQuietly("**/checkout/summary**", 5000);
         return new FurlencoOrderSummaryPage(page);

@@ -1,5 +1,13 @@
 name: Tests
 
+# Two jobs, on purpose:
+#  - checks: compile + generated-docs freshness + leak scan. Needs no network access to staging, so it runs on every
+#    push/PR on a GitHub-hosted runner.
+#  - e2e: the Furlenco browser tests. stag.furlenco.com resolves to a private address (only reachable on the company
+#    VPN); from a GitHub-hosted runner it returns a Cloudflare "Error 1002: DNS points to local or disallowed IP"
+#    page, every test then waits 30s, retries, and the job hits its time limit. So e2e only runs when started
+#    manually (workflow_dispatch) on a self-hosted runner that is on the VPN.
+
 on:
   push:
     branches: [main]
@@ -7,26 +15,31 @@ on:
   workflow_dispatch:
     inputs:
       groups:
-        description: "TestNG groups to run. Empty = furlenco (all Furlenco tests). They hit stag.furlenco.com, which needs the staging VPN, so run them on a self-hosted runner on the VPN (set the runner input)."
+        description: "TestNG groups to run (e.g. smoke, regression, furlenco). Empty = smoke."
         required: false
         default: ""
       runner:
-        description: "Runner label, e.g. a self-hosted runner on the VPN for stag.furlenco.com"
+        description: "Runner label of a self-hosted runner that is on the staging VPN"
         required: false
-        default: "ubuntu-latest"
+        default: "self-hosted"
       browser:
         description: "chromium, firefox or webkit"
         required: false
         default: "chromium"
+      run_e2e:
+        description: "Run the browser tests (needs the VPN runner above). Untick to run only the static checks."
+        type: boolean
+        required: false
+        default: true
 
 jobs:
-  test:
-    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 30
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 25
@@ -37,8 +50,40 @@ jobs:
           java src/test/java/com/tools/TraceabilityGenerator.java --check || { echo "::error::docs/test-case-traceability.md is stale. Run 'java src/test/java/com/tools/TraceabilityGenerator.java' and commit."; exit 1; }
           java src/test/java/com/tools/ProjectDocsGenerator.java --check || { echo "::error::README.md / docs/PROJECT_MASTER_PROMPT.md AUTO blocks are stale. Run 'java src/test/java/com/tools/ProjectDocsGenerator.java' and commit."; exit 1; }
 
+      - name: Compile main and test sources
+        run: mvn -B -q test-compile
+
+      - name: Leak scan (no phone numbers in tracked files)
+        run: |
+          if git ls-files -co --exclude-standard | xargs grep -nE '(^|[^0-9])(6|7|8|9)[0-9]{9}([^0-9]|$)' 2>/dev/null | grep -v 'seed-users.example.properties'; then
+            echo "::error::A 10-digit phone-number-like value was found in a tracked file. Seed accounts must stay in the gitignored local seed file or CI secrets."
+            exit 1
+          fi
+
+  e2e:
+    # Manual only: needs a runner on the staging VPN (see the note at the top).
+    if: github.event_name == 'workflow_dispatch' && inputs.run_e2e
+    needs: checks
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    env:
+      # Optional seed accounts for the history/address/cancel tests (comma-separated numbers, kept as secrets).
+      SEED_HISTORY_RENTBUY: ${{ secrets.SEED_HISTORY_RENTBUY }}
+      SEED_HISTORY_RENT: ${{ secrets.SEED_HISTORY_RENT }}
+      SEED_ADDRESS: ${{ secrets.SEED_ADDRESS }}
+      SEED_CANCEL_BUY: ${{ secrets.SEED_CANCEL_BUY }}
+      SEED_CANCEL_UNLIMITED: ${{ secrets.SEED_CANCEL_UNLIMITED }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
       - name: Run tests
-        run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'furlenco' }}"
+        run: mvn -B test -Dheadless=true -Dbrowser=${{ inputs.browser || 'chromium' }} -Dgroups="${{ inputs.groups || 'smoke' }}"
 
       - name: Upload Allure results
         if: always()
@@ -53,3 +98,11 @@ jobs:
         with:
           name: failure-artifacts
           path: target/traces/
+
+      - name: Upload login test data (masked)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-test-data
+          path: target/test-data/
+          if-no-files-found: ignore

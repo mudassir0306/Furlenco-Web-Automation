@@ -99,7 +99,7 @@ public class FurlencoCancelOrderTest extends BaseWebTest {
 
     @Test(groups = {"regression", "web", "furlenco", "payment-critical"}, priority = 2)
     @Severity(SeverityLevel.CRITICAL)
-    @Description("Verify an existing Unlimited (Rent) order can be cancelled from My Orders")
+    @Description("Verify an existing Unlimited order can be cancelled from My Orders")
     public void verifyCancelRentOrder() {
         SeedUsers.SeedUser seed = acquire(SeedUsers.Pool.CANCEL_UNLIMITED, "cancellable Unlimited order");
         boolean cancelAttempted = false;
@@ -110,15 +110,15 @@ public class FurlencoCancelOrderTest extends BaseWebTest {
             FurlencoMyOrdersPage myOrders = new FurlencoMyOrdersPage(page).open(furlencoUrl);
             assertThat(myOrders.isLoaded()).as("My Orders should load").isTrue();
 
-            myOrders.openFirstRentOrder();
-            assertThat(myOrders.isOrderDetailLoaded()).as("Rent order detail page should load").isTrue();
-            assertThat(myOrders.isCancelAvailable()).as("Cancel action should be available on this Rent order").isTrue();
+            myOrders.openFirstUnlimitedOrder();
+            assertThat(myOrders.isOrderDetailLoaded()).as("Unlimited order detail page should load").isTrue();
+            assertThat(myOrders.isCancelAvailable()).as("Cancel action should be available on this Unlimited order").isTrue();
 
             cancelAttempted = true;
             myOrders.clickCancel().confirmCancellation();
             SeedUsers.markConsumed(seed);
 
-            assertThat(myOrders.isCancelled()).as("Rent order should show as cancelled").isTrue();
+            assertThat(myOrders.isCancelled()).as("Unlimited order should show as cancelled").isTrue();
         } finally {
             if (!cancelAttempted) {
                 SeedUsers.release(seed);

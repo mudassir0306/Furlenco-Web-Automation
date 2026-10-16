@@ -75,6 +75,7 @@ src/main/java/com/framework/
     RetryTransformer  - Registered in testng.xml under listeners.
     TestListener  - Registered in testng.xml under listeners.
   utils/
+    EnvironmentCheck  - Fails fast when the target environment is unreachable (typically: staging while the company VPN is down), so a run produces one clear message instead of doze...
     LoginDataRecorder  - Records every login attempt's test data: an Allure attachment + parameters on the current test, and a row in target/test-data/login-attempts.csv.
     LoginTestData  - Immutable record of one login attempt's test data, written to the Allure report and to target/test-data/login-attempts.csv by LoginDataRecorder.
     RandomDataUtils  - Generates random, non-sensitive test data — primarily Indian mobile numbers for flows that need a phone number guaranteed not to already exist in the target...
@@ -156,12 +157,12 @@ Other locations: `src/test/java/com/tests/base` (BaseTest, BaseWebTest), `src/te
 | `FurlencoPdpNavigationTest` | 6 | 0 | furlenco, regression, smoke, web |
 | `FurlencoPincodeAvailabilityTest` | 3 | 0 | furlenco, regression, smoke, web |
 | `FurlencoPlpNavigationTest` | 13 | 0 | furlenco, regression, smoke, web |
-| `FurlencoProfileAndOrdersTest` | 4 | 4 | auth-profile, backlog, furlenco, orders-returns, regression, smoke, web |
+| `FurlencoProfileAndOrdersTest` | 5 | 4 | auth-profile, backlog, furlenco, orders-returns, regression, smoke, web |
 | `FurlencoRenewalTest` | 0 | 5 | backlog, furlenco, renewals |
 | `FurlencoSearchAndBrowseTest` | 2 | 0 | furlenco, regression, smoke, web |
 | `FurlencoStockAvailabilityTest` | 2 | 0 | furlenco, regression, smoke, web |
 | `FurlencoSuccessfulOrderTest` | 2 | 0 | furlenco, payment-critical, regression, web |
-| **Total (27 classes)** | **97** | **18** | |
+| **Total (27 classes)** | **98** | **18** | |
 <!-- AUTO:test-classes:END -->
 
 ## Writing a test
@@ -236,7 +237,7 @@ Keys set only in some env files:
 | `furlenco.pin.experiments` | preprod, qa |
 | `login.otp.wait.ms` | preprod, qa, staging |
 | `login.submit.wait.ms` | preprod, qa, staging |
-| `test.delivery.pincode` | preprod |
+| `test.delivery.pincode` | preprod, qa, staging |
 | `test.new.user.registered.email` | preprod |
 | `test.payment.*` (14 keys) | preprod |
 | `test.user.otp` | preprod, qa, staging |
@@ -251,7 +252,10 @@ Keys set only in some env files:
 
 ## CI
 
-`.github/workflows/tests.yml` runs on push to `main`, pull requests and manual dispatch (inputs: `groups`, `runner`, `browser`). It first checks that the generated docs are current, then runs the tests (default group `furlenco`) and uploads Allure results and failure artifacts. The tests need staging VPN access, so use a self-hosted runner on the VPN for real runs.
+`.github/workflows/tests.yml` has two jobs:
+
+- **`checks`** runs on every push to `main` and every pull request, on a GitHub-hosted runner: generated-docs freshness (`--check` for both generators), `mvn test-compile`, and a leak scan for phone-number-like values. It needs no access to staging.
+- **`e2e`** (the browser tests) runs **only on manual dispatch** (inputs: `groups` default `smoke`, `runner` default `self-hosted`, `browser`, `run_e2e`) and needs a self-hosted runner on the staging VPN. `stag.furlenco.com` resolves to a private address, so on a GitHub-hosted runner it returns a Cloudflare "Error 1002: DNS points to local or disallowed IP" page and every test times out; the connectivity pre-check (`EnvironmentCheck`) also stops such a run immediately with a clear message. Seed accounts can be supplied as repository secrets (`SEED_HISTORY_RENTBUY`, `SEED_HISTORY_RENT`, `SEED_ADDRESS`, `SEED_CANCEL_BUY`, `SEED_CANCEL_UNLIMITED`).
 
 ## Traceability
 

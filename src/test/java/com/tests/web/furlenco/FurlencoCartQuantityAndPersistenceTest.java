@@ -47,10 +47,27 @@ public class FurlencoCartQuantityAndPersistenceTest extends BaseWebTest {
         loginPage.loginAsFreshUser();
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");
-        FurlencoProductPage productPage = plpPage.clickFirstAvailableProduct(10);
-        productPage.clickAddToCart();
-        return homePage.openCart();
+        // Quantity tests need a product with stock for more than one unit ("Only 1 left" disables the + button),
+        // so keep trying products and discard the ones that can't be increased.
+        java.util.List<String> candidates = plpPage.getCandidateProductUrls(MAX_PRODUCTS_TO_TRY);
+        for (String url : candidates) {
+            FurlencoProductPage productPage = plpPage.openProduct(url);
+            if (!productPage.isAddToCartButtonEnabled()) {
+                continue;
+            }
+            productPage.clickAddToCart();
+            FurlencoCartDrawer cartDrawer = productPage.goToCart();
+            if (cartDrawer.getItemCount() > 0 && cartDrawer.isQuantityIncreasable(0)) {
+                return cartDrawer;
+            }
+            if (cartDrawer.getItemCount() > 0) {
+                cartDrawer.removeItem(0); // not increasable: take it out and try the next product
+            }
+        }
+        throw new AssertionError("No product with quantity > 1 available among " + candidates.size() + " candidates");
     }
+
+    private static final int MAX_PRODUCTS_TO_TRY = 10;
 
     @TmsLink("TC-431")
     @Test(groups = {"regression", "web", "furlenco"}, priority = 1)
