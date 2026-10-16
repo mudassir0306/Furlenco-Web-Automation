@@ -57,7 +57,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
             if (useSeedAddress) {
-                loginPage.loginWithSeed(seed); // needs the saved addresses of a seed.address account
+                loginPage.loginWithSeedAndEmptyCart(seed); // needs the saved addresses of a seed.address account
             } else {
                 loginPage.loginAsFreshUser();
             }
@@ -136,7 +136,7 @@ public class FurlencoAddressTest extends BaseWebTest {
         homePage.enterPincode(config.get("test.delivery.pincode", "110001"));
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithSeed(seed); // needs the saved addresses of a seed.address account
+            loginPage.loginWithSeedAndEmptyCart(seed); // needs the saved addresses of a seed.address account
         }
         homePage.clickRentTab();
         FurlencoPlpPage plpPage = homePage.clickCategory("Bedroom");

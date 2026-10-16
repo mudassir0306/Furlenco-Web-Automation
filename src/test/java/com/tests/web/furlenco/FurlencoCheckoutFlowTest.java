@@ -54,7 +54,7 @@ public class FurlencoCheckoutFlowTest extends BaseWebTest {
         SeedUsers.SeedUser seed = SeedUsers.require(SeedUsers.Pool.ADDRESS);
         FurlencoLoginPage loginPage = homePage.openLogin();
         if (loginPage.isOpen()) {
-            loginPage.loginWithSeed(seed);
+            loginPage.loginWithSeedAndEmptyCart(seed);
         }
     }
 

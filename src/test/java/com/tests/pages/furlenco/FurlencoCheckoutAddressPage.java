@@ -55,8 +55,7 @@ public class FurlencoCheckoutAddressPage extends BasePage {
     /** Saved address cards are buttons whose text includes a 6-digit pincode (verified live 2026-10-05). */
     @Step("Count saved addresses")
     public int getSavedAddressCount() {
-        page.locator(":text(\"Saved Addresses\")").first().waitFor(
-                new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(30_000));
+        waitForFirstVisible(":text(\"Saved Addresses\")", 30_000);
         return page.locator("button")
                 .filter(new Locator.FilterOptions().setHasText(java.util.regex.Pattern.compile("\\b\\d{6}\\b")))
                 .count();
@@ -84,16 +83,18 @@ public class FurlencoCheckoutAddressPage extends BasePage {
 
     @Step("Click Add New Address")
     public FurlencoNewAddressPage clickAddNewAddress() {
-        Locator addNew = page.locator(ADD_NEW_ADDRESS_BUTTON).first();
-        addNew.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(45_000));
-        addNew.click();
+        waitForFirstVisible(ADD_NEW_ADDRESS_BUTTON, 45_000).click();
         return new FurlencoNewAddressPage(page);
     }
 
     @Step("Check if the Add New Address action is available")
     public boolean isAddNewAddressAvailable() {
-        Locator btn = page.locator(ADD_NEW_ADDRESS_BUTTON);
-        return btn.count() > 0 && btn.first().isVisible();
+        for (Locator btn : page.locator(ADD_NEW_ADDRESS_BUTTON).all()) {
+            if (btn.isVisible()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -104,9 +105,7 @@ public class FurlencoCheckoutAddressPage extends BasePage {
     @Step("Confirm the currently selected delivery address")
     public FurlencoOrderSummaryPage confirmSelectedAddress() {
         LOGGER.info("Confirming selected delivery address");
-        Locator confirmBtn = page.locator(CONFIRM_LOCATION_BUTTON).first();
-        confirmBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        confirmBtn.click();
+        waitForFirstVisible(CONFIRM_LOCATION_BUTTON, 45_000).click();
         page.waitForLoadState();
         waitForUrlQuietly("**/checkout/summary**", 5000);
         return new FurlencoOrderSummaryPage(page);

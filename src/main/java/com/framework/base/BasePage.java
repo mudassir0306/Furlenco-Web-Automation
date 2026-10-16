@@ -70,6 +70,29 @@ public abstract class BasePage {
 
     // ---- Bounded, never-throwing waits (replace fixed sleeps; a timeout just means "carry on") ----
 
+    /**
+     * Returns the first VISIBLE match of {@code selector}, waiting up to {@code timeoutMs}. Plain {@code .first()}
+     * often resolves to a hidden duplicate (responsive/mobile copies, closed panels) that never becomes visible,
+     * so the wait times out even though a visible match exists. Throws {@link TimeoutError} when none appears.
+     */
+    protected Locator waitForFirstVisible(String selector, double timeoutMs) {
+        Locator[] found = new Locator[1];
+        try {
+            com.framework.utils.WaitUtils.pollUntil("a visible match for " + selector, () -> {
+                for (Locator candidate : page.locator(selector).all()) {
+                    if (candidate.isVisible()) {
+                        found[0] = candidate;
+                        return true;
+                    }
+                }
+                return false;
+            }, java.time.Duration.ofMillis((long) timeoutMs), java.time.Duration.ofMillis(250));
+        } catch (IllegalStateException e) {
+            throw new TimeoutError("No visible element for " + selector + " within " + (long) timeoutMs + "ms");
+        }
+        return found[0];
+    }
+
     /** Waits up to {@code timeoutMs} for the locator to reach {@code state}; returns false (no throw) on timeout. */
     protected boolean waitQuietly(Locator locator, WaitForSelectorState state, double timeoutMs) {
         try {

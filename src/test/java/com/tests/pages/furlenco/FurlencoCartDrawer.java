@@ -36,7 +36,10 @@ public class FurlencoCartDrawer extends BasePage {
             "button:has-text('CHECKOUT'), button:has-text('Pay ₹'), button:has-text('Proceed')";
     // Verified live: a "Rental Terms Reminder" dialog with a PROCEED button (Rent only, minimum
     // tenure disclosure) — not literally worded "tenure", so match on the dialog's own PROCEED CTA.
-    private static final String MIN_TENURE_DIALOG = "[data-slot='dialog-content']:has-text('Rental Terms')";
+    // The Rental Terms dialog is not always a Radix dialog-content (the older cart layout uses a different
+    // dialog component, seen 2026-10-16), so match it by its heading text as well.
+    private static final String MIN_TENURE_DIALOG =
+            "[data-slot='dialog-content']:has-text('Rental Terms'), [role='dialog']:has-text('Rental Terms'), :text(\"Rental Terms Reminder\")";
     private static final String MIN_TENURE_CONFIRM_BUTTON =
             "[data-slot='dialog-content'] button:has-text('PROCEED'), [data-slot='dialog-content'] button:has-text('Continue')";
 
@@ -76,16 +79,24 @@ public class FurlencoCartDrawer extends BasePage {
 
     @Step("Check if a minimum-tenure confirmation popup is shown (Rent checkout)")
     public boolean isMinTenurePopupDisplayed() {
-        Locator dialog = page.locator(MIN_TENURE_DIALOG);
-        return dialog.count() > 0 && dialog.first().isVisible();
+        for (Locator dialog : page.locator(MIN_TENURE_DIALOG).all()) {
+            if (dialog.isVisible()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Step("Confirm the minimum-tenure popup if present")
     public FurlencoCartDrawer confirmMinTenurePopupIfPresent() {
         if (isMinTenurePopupDisplayed()) {
             LOGGER.info("Min tenure popup displayed, confirming");
-            page.locator(MIN_TENURE_CONFIRM_BUTTON).first().click();
-            waitQuietly(page.locator(MIN_TENURE_DIALOG).first(), WaitForSelectorState.HIDDEN, 2000);
+            // Prefer a PROCEED button inside a dialog; otherwise the LAST PROCEED button on the page (the dialog is
+            // appended after the cart's own Proceed button).
+            Locator inDialog = page.locator(MIN_TENURE_CONFIRM_BUTTON).first();
+            Locator button = inDialog.count() > 0 ? inDialog : page.locator("button:has-text('PROCEED')").last();
+            button.click();
+            waitQuietly(page.locator(":text(\"Rental Terms Reminder\")").first(), WaitForSelectorState.HIDDEN, 15_000);
         }
         return this;
     }
@@ -99,10 +110,19 @@ public class FurlencoCartDrawer extends BasePage {
     @Step("Click Checkout to proceed to Delivery Address")
     public FurlencoCheckoutAddressPage clickCheckout() {
         LOGGER.info("Clicking Checkout");
-        Locator checkoutBtn = page.locator(CHECKOUT_BUTTON).first();
-        checkoutBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        // First VISIBLE match: the page keeps hidden duplicates of Checkout/Proceed that .first() would pick.
+        Locator checkoutBtn = waitForFirstVisible(CHECKOUT_BUTTON, 45_000);
         checkoutBtn.click();
-        waitQuietly(page.locator(MIN_TENURE_DIALOG).first(), WaitForSelectorState.VISIBLE, 800);
+        // Either the Rent "Rental Terms Reminder" dialog appears (can take several seconds on staging) or the
+        // checkout address step opens directly (Buy / no monthly-plan items) — wait for whichever comes first.
+        try {
+            WaitUtils.pollUntil("Rental Terms dialog or checkout address step",
+                    () -> currentUrl().contains("/checkout/address")
+                            || (page.locator(MIN_TENURE_DIALOG).count() > 0 && page.locator(MIN_TENURE_DIALOG).first().isVisible()),
+                    java.time.Duration.ofSeconds(25), java.time.Duration.ofMillis(200));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Neither the Rental Terms dialog nor the address step appeared within 25s: {}", e.getMessage());
+        }
         confirmMinTenurePopupIfPresent();
         page.waitForLoadState();
         return new FurlencoCheckoutAddressPage(page);
@@ -310,6 +330,34 @@ public class FurlencoCartDrawer extends BasePage {
             LOGGER.debug("Item count did not change within 15s of removal: {}", e.getMessage());
         }
         return this;
+    }
+
+    /**
+     * Empties the cart. Seeded accounts keep their cart between runs, so earlier runs leave many items (and
+     * "Stock limit reached!" lines that block Proceed). Navigates to /cart, removes items until none are left
+     * (bounded), then returns to the page the caller was on.
+     */
+    @Step("Empty the cart")
+    public FurlencoCartDrawer clearCart() {
+        String returnUrl = page.url();
+        page.navigate(java.net.URI.create(returnUrl).resolve("/cart").toString());
+        waitQuietly(page.locator(":text(\"Your Cart\"), :text(\"Rent Cart\"), :text(\"Buy Cart\"), #empty-cart, :text(\"Cart Looks A little Empty\")").first(),
+                WaitForSelectorState.VISIBLE, 45_000);
+        int removed = 0;
+        for (int guard = 0; guard < 40 && getItemCountNow() > 0; guard++) {
+            removeItem(0);
+            removed++;
+        }
+        LOGGER.info("Cart cleared: {} item(s) removed", removed);
+        if (!returnUrl.contains("/cart")) {
+            page.navigate(returnUrl);
+        }
+        return this;
+    }
+
+    /** Item count without waiting for items to appear (an empty cart is a valid answer here). */
+    private int getItemCountNow() {
+        return page.locator(ITEM_ANCHOR).count();
     }
 
     // ---- Rental tenure / payment plan selection (CART-03) ----

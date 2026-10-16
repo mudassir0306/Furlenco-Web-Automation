@@ -75,6 +75,7 @@ src/main/java/com/framework/
     RetryTransformer  - Registered in testng.xml under listeners.
     TestListener  - Registered in testng.xml under listeners.
   utils/
+    EnvironmentCheck  - Fails fast when the target environment is unreachable (typically: staging while the company VPN is down), so a run produces one clear message instead of doze...
     LoginDataRecorder  - Records every login attempt's test data: an Allure attachment + parameters on the current test, and a row in target/test-data/login-attempts.csv.
     LoginTestData  - Immutable record of one login attempt's test data, written to the Allure report and to target/test-data/login-attempts.csv by LoginDataRecorder.
     RandomDataUtils  - Generates random, non-sensitive test data — primarily Indian mobile numbers for flows that need a phone number guaranteed not to already exist in the target...
