@@ -86,7 +86,9 @@ public class FurlencoPaymentPage extends BasePage {
         String urlBefore = page.url();
         page.locator(PAY_NOW_BUTTON).first().click();
         page.waitForLoadState();
-        // TODO(verify on staging): result redirect/route not confirmed; waits for any URL change, bounded 4s
+        // UNVERIFIED: the result route after paying is not confirmed. Verifying it means submitting a payment on
+        // a non-local environment (even in Razorpay test mode), which an assistant must not do; a human has to
+        // run this once and record the route. Until then: wait for any URL change, bounded 4s.
         waitForUrlChangeQuietly(urlBefore, 4000);
         settle(2000);
         return new FurlencoOrderResultPage(page);

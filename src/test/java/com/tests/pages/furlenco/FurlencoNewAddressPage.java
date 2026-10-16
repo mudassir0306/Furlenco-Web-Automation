@@ -64,7 +64,8 @@ public class FurlencoNewAddressPage extends BasePage {
         input.click();
         input.fill("");
         input.pressSequentially(query);
-        // TODO(verify on staging): suggestions may never appear (blank Google Maps area); bounded by waitMs, no throw
+        // Verified behaviour (2026-10-06, still true 2026-10-15): on staging the Google Maps area is blank and no
+        // suggestions appear, so this waits at most waitMs and returns 0 instead of throwing.
         waitQuietly(page.locator(SUGGESTION).first(), WaitForSelectorState.VISIBLE, waitMs);
         return page.locator(SUGGESTION).count();
     }

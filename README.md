@@ -236,7 +236,7 @@ Keys set only in some env files:
 | `furlenco.pin.experiments` | preprod, qa |
 | `login.otp.wait.ms` | preprod, qa, staging |
 | `login.submit.wait.ms` | preprod, qa, staging |
-| `test.delivery.pincode` | preprod |
+| `test.delivery.pincode` | preprod, qa, staging |
 | `test.new.user.registered.email` | preprod |
 | `test.payment.*` (14 keys) | preprod |
 | `test.user.otp` | preprod, qa, staging |

@@ -29,6 +29,16 @@ public class FurlencoCheckoutAddressPage extends BasePage {
 
     @Step("Check if the Delivery Address step is loaded")
     public boolean isLoaded() {
+        // The route change after Checkout can lag on staging, so wait (bounded) for either signal instead of
+        // reading the page once.
+        try {
+            com.framework.utils.WaitUtils.pollUntil("checkout address step shown",
+                    () -> currentUrl().contains("/checkout/address")
+                            || (page.locator(ADDRESS_LIST_CONTAINER).count() > 0 && page.locator(ADDRESS_LIST_CONTAINER).first().isVisible()),
+                    java.time.Duration.ofSeconds(45), java.time.Duration.ofMillis(250));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Delivery Address step not seen within 45s: {}", e.getMessage());
+        }
         boolean urlMatches = currentUrl().contains("/checkout/address");
         Locator container = page.locator(ADDRESS_LIST_CONTAINER);
         boolean containerVisible = container.count() > 0 && container.first().isVisible();
@@ -46,7 +56,7 @@ public class FurlencoCheckoutAddressPage extends BasePage {
     @Step("Count saved addresses")
     public int getSavedAddressCount() {
         page.locator(":text(\"Saved Addresses\")").first().waitFor(
-                new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
+                new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(30_000));
         return page.locator("button")
                 .filter(new Locator.FilterOptions().setHasText(java.util.regex.Pattern.compile("\\b\\d{6}\\b")))
                 .count();
@@ -74,7 +84,9 @@ public class FurlencoCheckoutAddressPage extends BasePage {
 
     @Step("Click Add New Address")
     public FurlencoNewAddressPage clickAddNewAddress() {
-        page.locator(ADD_NEW_ADDRESS_BUTTON).first().click();
+        Locator addNew = page.locator(ADD_NEW_ADDRESS_BUTTON).first();
+        addNew.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(45_000));
+        addNew.click();
         return new FurlencoNewAddressPage(page);
     }
 
