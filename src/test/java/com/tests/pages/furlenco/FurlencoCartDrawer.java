@@ -548,19 +548,77 @@ public class FurlencoCartDrawer extends BasePage {
     private static final String COUPON_INPUT = "input[placeholder*='coupon' i], input[placeholder*='code' i]";
     private static final String COUPON_APPLY_BUTTON = "button:has-text('Apply')";
     private static final String COUPON_LOCKED_MESSAGE = ":text-matches(\"Add items worth.*unlock offer\")";
+    // Verified 2026-10-22 (layout with the "Enter coupon code" box): after a wrong code the page adds
+    // <p class="mt-1.5 text-sm text-error-7">Invalid coupon code or not applicable for this cart</p> under the box.
+    // The usual other wordings are kept for the other layout, whose message was not captured.
     private static final String COUPON_ERROR_MESSAGE =
-            ":text(\"Invalid coupon\"), :text(\"invalid code\"), :text(\"expired\"), :text(\"not applicable\")";
+            ":text(\"Invalid coupon code\"), p.text-error-7, :text-matches(\"invalid|not valid|not applicable|expired|incorrect|does not exist|doesn.t exist|try another\", \"i\")";
     private static final String COUPON_REMOVE_BUTTON = "button:has-text('Remove')";
-    private static final String COUPON_APPLIED_INDICATOR = ":text(\"Coupon Applied\"), :text(\"applied successfully\")";
+    // Applied state (seen 2026-10-22): the tile's button reads "Applied" and a banner says "You're saving ₹N with CODE"
+    // next to a REMOVE button.
+    private static final String COUPON_APPLIED_INDICATOR =
+            ":text(\"Coupon Applied\"), :text(\"applied successfully\"), :text-matches(\"saving .* with [A-Z0-9]{4,}\", \"i\"), button:text-is(\"Applied\")";
+    // Coupon codes in the offer tiles are plain upper-case tokens; these upper-case words are buttons/labels, not codes.
+    private static final java.util.Set<String> NOT_COUPON_CODES = java.util.Set.of(
+            "APPLY", "APPLIED", "REMOVE", "CHANGE", "PROCEED", "CHECKOUT", "CONFIRM", "RENT", "BUY", "UNLMTD", "EDIT", "CONTINUE");
 
     @Step("Enter a coupon code and apply it")
     public FurlencoCartDrawer applyCouponCode(String code) {
         LOGGER.info("Applying coupon code: {}", code);
-        Locator input = page.locator(COUPON_INPUT).first();
+        Locator input = couponInput();
         input.fill(code);
-        page.locator(COUPON_APPLY_BUTTON).first().click();
-        waitQuietly(page.locator(COUPON_APPLIED_INDICATOR + ", " + COUPON_ERROR_MESSAGE).first(), WaitForSelectorState.VISIBLE, 3000);
+        // The typed-code APPLY button sits in the same container as the input (the offer tiles below have their
+        // own "Apply" buttons, so don't take the page's first Apply).
+        Locator apply = input.locator("xpath=ancestor::div[.//button][1]//button").first();
+        apply.click();
+        waitQuietly(page.locator(COUPON_APPLIED_INDICATOR + ", " + COUPON_ERROR_MESSAGE).first(), WaitForSelectorState.VISIBLE, 15_000);
         return this;
+    }
+
+    /**
+     * The coupon input. This cart's box has no placeholder (it is labelled "Have a Coupon code?", seen
+     * 2026-10-16), so fall back to finding the input in the container of that label.
+     */
+    private Locator couponInput() {
+        // The coupon section renders late (after the cart items), so wait for EITHER layout's entry point: the
+        // placeholder input (layout B) or the "Have a Coupon code?" row (layout A).
+        waitQuietly(page.locator(COUPON_INPUT + ", :text(\"Have a Coupon code\")").first(), WaitForSelectorState.VISIBLE, 60_000);
+        Locator byPlaceholder = page.locator(COUPON_INPUT).first();
+        if (byPlaceholder.count() > 0 && byPlaceholder.isVisible()) {
+            return byPlaceholder;
+        }
+        // Other layout (seen 2026-10-22): a "Have a Coupon code?" row that opens an "Offers and Discounts"
+        // drawer holding the input (no placeholder) and an APPLY button.
+        Locator label = page.locator(":text(\"Have a Coupon code\")").first();
+        label.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(45_000));
+        label.click();
+        Locator panelTitle = page.locator(":text(\"Offers and Discounts\")").first();
+        panelTitle.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15_000));
+        Locator inPanel = panelTitle.locator("xpath=ancestor::div[.//input][1]//input").first();
+        inPanel.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15_000));
+        return inPanel;
+    }
+
+    /**
+     * The coupon codes currently offered as tiles on the cart (they change with the cart and account, so tests
+     * must not hard-code one). Codes are upper-case alphanumeric tokens that sit next to an Apply/Applied button.
+     */
+    @Step("Read the coupon codes offered on the cart")
+    public java.util.List<String> getOfferedCouponCodes() {
+        waitQuietly(page.locator("button:text-matches(\"^(apply|applied)$\", \"i\")").first(), WaitForSelectorState.VISIBLE, 30_000);
+        java.util.List<String> codes = new java.util.ArrayList<>();
+        for (Locator token : page.locator(":text-matches(\"^[A-Z][A-Z0-9]{4,14}$\")").all()) {
+            try {
+                String text = token.innerText().trim();
+                if (token.isVisible() && !NOT_COUPON_CODES.contains(text) && !codes.contains(text)) {
+                    codes.add(text);
+                }
+            } catch (RuntimeException ignored) {
+                // element detached while the cart re-rendered: skip it
+            }
+        }
+        LOGGER.info("Offered coupon codes on the cart: {}", codes);
+        return codes;
     }
 
     @Step("Check if a coupon error/invalid message is displayed")
@@ -578,8 +636,16 @@ public class FurlencoCartDrawer extends BasePage {
     @Step("Remove the currently applied coupon")
     public FurlencoCartDrawer removeCoupon() {
         LOGGER.info("Removing applied coupon");
-        page.locator(COUPON_REMOVE_BUTTON).first().click();
-        waitQuietly(page.locator(COUPON_REMOVE_BUTTON).first(), WaitForSelectorState.HIDDEN, 1500);
+        // The REMOVE button next to the "You're saving ... with CODE" banner (exact label, visible one).
+        waitForFirstVisible("button:text-matches(\"^remove$\", \"i\")", 30_000).click();
+        // Removal is an API round trip and the "Offer applied successfully" notice lingers for a few seconds, so
+        // wait until nothing shows the coupon as applied any more.
+        try {
+            WaitUtils.pollUntil("coupon no longer shown as applied", () -> !isCouponAppliedIndicatorDisplayed(),
+                    java.time.Duration.ofSeconds(25), java.time.Duration.ofMillis(300));
+        } catch (IllegalStateException e) {
+            LOGGER.debug("Coupon still shown as applied 25s after REMOVE: {}", e.getMessage());
+        }
         return this;
     }
 
